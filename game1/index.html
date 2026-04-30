@@ -141,4 +141,24 @@
             </div>
         </div>
 
-        <
+        <div class="bottom-bar">
+            <div>
+                <label>Brush Size: </label>
+                <input type="range" id="brushSize" min="1" max="20" value="5">
+            </div>
+            <div id="fpsCounter">FPS: 60</div>
+        </div>
+    </div>
+
+    <!-- Replace the Script below with your actual game script if you have it! -->
+    <script>
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+        // Your actual physics engine code should go here...
+    </script>
+</body>
+</html>
