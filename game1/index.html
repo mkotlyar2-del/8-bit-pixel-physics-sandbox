@@ -1,0 +1,2519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Physics Sandbox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
+            color: #eee;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            display: block;
+            margin: 0 auto;
+            cursor: none;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            max-width: 100%;
+            max-height: 75vh;
+        }
+
+        .element-btn {
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .element-btn.active {
+            border-color: white;
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .element-btn:hover .tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        #hoverInspector {
+            position: fixed;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: none;
+            z-index: 100;
+            border: 1px solid #444;
+        }
+
+        #brushCursor {
+            position: fixed;
+            pointer-events: none;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 99;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(255, 255, 255, 0.2);
+            transition: width 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                height 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                border-color 0.3s ease,
+                border-radius 0.2s ease;
+            backdrop-filter: contrast(1.2) brightness(1.1);
+        }
+
+        #brushCursor::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: inherit;
+            animation: cursor-pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes cursor-pulse {
+            0% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.2;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+        }
+
+        .cursor-select {
+            border-radius: 4px !important;
+            border-style: dashed !important;
+            border-width: 1px !important;
+        }
+
+        .gui-overlay {
+            backdrop-filter: blur(4px);
+            display: none;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider.blue {
+            background-color: #3b82f6;
+        }
+
+        input:checked+.slider.pink {
+            background-color: #ec4899;
+        }
+
+        input:checked+.slider.green {
+            background-color: #22c55e;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .rain-choice {
+            border: 2px solid transparent;
+            padding: 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .rain-choice.selected {
+            border-color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* --- TABS CSS --- */
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #374151;
+            padding-bottom: 5px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            color: #60a5fa;
+            /* Blue-400 */
+            border-bottom: 2px solid #60a5fa;
+            margin-bottom: -7px;
+            /* Overlap border */
+            background: rgba(96, 165, 250, 0.1);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        #tab-elements {
+            max-height: 45vh;
+            overflow-y: auto;
+            padding-right: 8px;
+            scrollbar-width: thin;
+            scrollbar-color: #4b5563 #1f2937;
+        }
+
+        #tab-elements::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #tab-elements::-webkit-scrollbar-track {
+            background: #1f2937;
+            border-radius: 10px;
+        }
+
+        #tab-elements::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="hoverInspector">Empty</div>
+    <div id="brushCursor"></div>
+
+    <!-- Quest Panel -->
+    <div id="questPanel"
+        class="fixed top-2 right-2 md:top-4 md:right-4 bg-gray-900 border-2 border-yellow-600/50 rounded-xl p-3 md:p-4 w-48 md:w-64 shadow-[0_0_15px_rgba(202,138,4,0.3)] z-[100] transition-all duration-300 pointer-events-none">
+        <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-2">
+            <h3
+                class="text-yellow-500 font-bold text-[10px] md:text-xs uppercase tracking-widest flex items-center gap-1 md:gap-2">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                </svg>
+                Quests
+            </h3>
+            <span id="questProgress"
+                class="text-gray-400 text-[9px] md:text-[10px] font-mono bg-gray-800 px-1.5 py-0.5 rounded">0/25</span>
+        </div>
+        <p id="questText"
+            class="text-xs md:text-sm text-gray-200 font-medium transition-all duration-300 min-h-[36px] flex items-center">
+            Loading...</p>
+    </div>
+
+    <div id="cloudGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-blue-300/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-blue-300 font-bold uppercase tracking-widest text-sm">Cloud Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-gray-800">
+                    <div>
+                        <p class="text-xs font-bold text-white uppercase tracking-tighter">Rain Enabled</p>
+                        <p class="text-[10px] text-gray-400">Infinite toggle</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="cloudRainToggle" checked>
+                        <span class="slider blue"></span>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-gray-800">
+                    <div>
+                        <p class="text-xs font-bold text-white uppercase tracking-tighter">Goes Away</p>
+                        <p class="text-[10px] text-gray-400">Cloud evaporates after raining</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="cloudGoesAwayToggle">
+                        <span class="slider blue"></span>
+                    </label>
+                </div>
+
+                <div class="bg-black/30 p-3 rounded-lg border border-gray-800">
+                    <p class="text-[10px] text-gray-400 uppercase font-bold mb-3 text-center">Rain Type</p>
+                    <div class="grid grid-cols-4 gap-2">
+                        <div class="rain-choice selected flex flex-col items-center gap-1" data-liquid="3">
+                            <div class="w-8 h-8 bg-blue-500 rounded shadow"></div>
+                            <span class="text-[8px] text-gray-300 uppercase">Water</span>
+                        </div>
+                        <div class="rain-choice flex flex-col items-center gap-1" data-liquid="7">
+                            <div class="w-8 h-8 bg-purple-900 rounded shadow"></div>
+                            <span class="text-[8px] text-gray-300 uppercase">Oil</span>
+                        </div>
+                        <div class="rain-choice flex flex-col items-center gap-1" data-liquid="9">
+                            <div class="w-8 h-8 bg-green-500 rounded shadow"></div>
+                            <span class="text-[8px] text-gray-300 uppercase">Acid</span>
+                        </div>
+                        <div class="rain-choice flex flex-col items-center gap-1" data-liquid="12">
+                            <div class="w-8 h-8 bg-pink-500 rounded shadow"></div>
+                            <span class="text-[8px] text-gray-300 uppercase">Anti</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Close</button>
+        </div>
+    </div>
+
+    <!-- Anti-Acid GUI Modal -->
+    <div id="antiAcidGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-pink-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-pink-400 font-bold uppercase tracking-widest text-sm">Anti-Acid Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-gray-800">
+                    <div>
+                        <p class="text-xs font-bold text-white uppercase tracking-tighter">Auto Tracking</p>
+                        <p class="text-[10px] text-gray-400">Hunt nearby Acid</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="antiAcidTrackingToggle">
+                        <span class="slider pink"></span>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-gray-800">
+                    <div>
+                        <p class="text-xs font-bold text-white uppercase tracking-tighter">Consume on Use</p>
+                        <p class="text-[10px] text-gray-400">Perish after neutralizing</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="antiAcidPerishToggle" checked>
+                        <span class="slider pink"></span>
+                    </label>
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- Acid GUI Modal -->
+    <div id="acidGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-green-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-green-400 font-bold uppercase tracking-widest text-sm">Acid Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-gray-800">
+                    <div>
+                        <p class="text-xs font-bold text-white uppercase tracking-tighter">Auto Tracking</p>
+                        <p class="text-[10px] text-gray-400">Hunt materials</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="acidTrackingToggle">
+                        <span class="slider green"></span>
+                    </label>
+                </div>
+                <div class="flex items-center justify-between bg-black/30 p-3 rounded-lg border border-gray-800">
+                    <div>
+                        <p class="text-xs font-bold text-white uppercase tracking-tighter">Consume on Use</p>
+                        <p class="text-[10px] text-gray-400">Perish after dissolving</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="acidPerishToggle" checked>
+                        <span class="slider green"></span>
+                    </label>
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- Grass Seed GUI Modal -->
+    <div id="grassSeedGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-green-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-green-400 font-bold uppercase tracking-widest text-sm">Grass Seed Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="text-gray-400 text-sm italic text-center">
+                    More settings coming soon!
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- Tree Seed GUI Modal -->
+    <div id="treeSeedGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-emerald-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-emerald-400 font-bold uppercase tracking-widest text-sm">Tree Seed Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="text-gray-400 text-sm italic text-center">
+                    More settings coming soon!
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- Daisy Seed GUI Modal -->
+    <div id="daisySeedGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-yellow-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-yellow-400 font-bold uppercase tracking-widest text-sm">Daisy Seed Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="text-gray-400 text-sm italic text-center">
+                    More settings coming soon!
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- Massive Tree Seed GUI Modal -->
+    <div id="massiveTreeGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-orange-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-orange-400 font-bold uppercase tracking-widest text-sm">Massive Tree Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="text-gray-400 text-sm italic text-center">
+                    More settings coming soon!
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- Mushroom Spore GUI Modal -->
+    <div id="mushroomGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-red-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-red-400 font-bold uppercase tracking-widest text-sm">Mushroom Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="text-gray-400 text-sm italic text-center">
+                    More settings coming soon!
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- Big Blue Mushroom GUI Modal -->
+    <div id="blueMushroomGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-blue-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-blue-400 font-bold uppercase tracking-widest text-sm">Glowing Mushroom Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="text-gray-400 text-sm italic text-center">
+                    Glow in the dark logic coming soon!
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <!-- Cactus Settings GUI Modal -->
+    <div id="cactusGui" class="gui-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60">
+        <div class="bg-gray-900 border border-green-500/50 rounded-xl p-6 w-80 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-green-400 font-bold uppercase tracking-widest text-sm">Cactus Settings</h2>
+                <button class="close-gui text-gray-500 hover:text-white transition-colors text-xl">&times;</button>
+            </div>
+            <div class="py-4 space-y-4">
+                <div class="flex items-center justify-between bg-gray-800 p-3 rounded-lg border border-gray-700">
+                    <span class="text-gray-300 text-xs font-bold uppercase tracking-tighter">Grow Spikes</span>
+                    <button id="toggleCactusSpikes"
+                        class="w-12 h-6 bg-gray-600 rounded-full relative transition-colors duration-200">
+                        <div
+                            class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200">
+                        </div>
+                    </button>
+                </div>
+            </div>
+            <button
+                class="gui-done w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded text-xs uppercase tracking-tighter">Apply
+                & Close</button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-4xl bg-gray-800 rounded-xl p-4 shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-xl font-bold text-blue-400">Pixel Sandbox 2D</h1>
+            <div class="flex items-center gap-3">
+                <button id="pauseBtn"
+                    class="bg-blue-600 hover:bg-blue-700 px-4 py-1 rounded text-sm font-bold transition-colors flex items-center gap-2">
+                    <span id="pauseIcon">⏸</span> <span id="pauseLabel">STOP TIME</span>
+                </button>
+                <button id="clearBtn"
+                    class="bg-red-600 hover:bg-red-700 px-4 py-1 rounded text-sm font-bold transition-colors">CLEAR</button>
+                <div class="text-xs text-gray-400 flex flex-col items-end">
+                    <span id="fpsCounter">FPS: 60</span>
+                    <span id="particleCounter">Particles: 0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative bg-black rounded border border-gray-700 overflow-hidden" id="canvasContainer">
+            <canvas id="sandboxCanvas"></canvas>
+            <div id="currentElementDisplay"
+                class="absolute top-2 left-2 bg-black/50 px-2 py-1 rounded text-[10px] text-white pointer-events-none uppercase font-bold">
+                Selected: Sand
+            </div>
+            <div id="pauseOverlay"
+                class="hidden absolute inset-0 pointer-events-none bg-blue-500/5 flex items-start justify-center pt-4">
+                <span
+                    class="text-blue-400 font-bold text-xs tracking-widest bg-black/40 px-3 py-1 rounded-full border border-blue-400/30 uppercase">Time
+                    Frozen</span>
+            </div>
+            <div id="versionDisplay"
+                class="absolute bottom-2 right-2 text-[10px] text-gray-500 pointer-events-none font-mono opacity-50">
+                Version 1.0.0.1
+            </div>
+        </div>
+
+        <!-- TABS NAVIGATION -->
+        <div class="mt-4">
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="elements">Elements</button>
+                <button class="tab-btn" data-tab="life">Life</button>
+                <button class="tab-btn" data-tab="tools">Tools</button>
+            </div>
+
+            <!-- TAB: ELEMENTS -->
+            <div id="tab-elements" class="tab-content active space-y-4">
+
+                <!-- SOLIDS -->
+                <div>
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Solids</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button data-type="stone" class="element-btn bg-gray-500 w-10 h-10 rounded shadow"
+                            title="Stone"><span class="tooltip">Stone</span></button>
+                        <button data-type="wood" class="element-btn bg-orange-800 w-10 h-10 rounded shadow"
+                            title="Wood"><span class="tooltip">Wood</span></button>
+                        <button data-type="titanium" class="element-btn bg-slate-500 w-10 h-10 rounded shadow"
+                            title="Titanium"><span class="tooltip">Titanium</span></button>
+                    </div>
+                </div>
+
+                <!-- POWDERS -->
+                <div>
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Powders</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button data-type="sand" class="element-btn active bg-yellow-500 w-10 h-10 rounded shadow"
+                            title="Sand"><span class="tooltip">Sand</span></button>
+                        <button data-type="wet_sand" class="element-btn bg-[#c29b4e] w-10 h-10 rounded shadow"
+                            title="Wet Sand"><span class="tooltip">Wet Sand</span></button>
+                        <button data-type="soil" class="element-btn bg-[#5d4037] w-10 h-10 rounded shadow"
+                            title="Soil"><span class="tooltip">Soil</span></button>
+                        <button data-type="gunpowder"
+                            class="element-btn bg-gray-700 w-10 h-10 rounded shadow border-gray-400"
+                            title="Gunpowder"><span class="tooltip">Gunpowder</span></button>
+                    </div>
+                </div>
+
+                <!-- LIQUIDS -->
+                <div>
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Liquids</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button data-type="water" class="element-btn bg-blue-500 w-10 h-10 rounded shadow"
+                            title="Water"><span class="tooltip">Water</span></button>
+                        <button data-type="oil" class="element-btn bg-purple-900 w-10 h-10 rounded shadow"
+                            title="Oil"><span class="tooltip">Oil</span></button>
+                        <button data-type="acid" id="acidBtn" class="element-btn bg-green-500 w-10 h-10 rounded shadow"
+                            title="Acid"><span class="tooltip">Acid</span></button>
+                        <button data-type="antiacid" id="antiAcidBtn"
+                            class="element-btn bg-pink-500 w-10 h-10 rounded shadow" title="Anti-Acid"><span
+                                class="tooltip">Anti-Acid</span></button>
+                    </div>
+                </div>
+
+                <!-- GASES & FORCES -->
+                <div>
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Gases & Forces</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button data-type="fire" class="element-btn bg-orange-500 w-10 h-10 rounded shadow"
+                            title="Fire"><span class="tooltip">Fire</span></button>
+                        <button data-type="smoke" class="element-btn bg-gray-300 w-10 h-10 rounded shadow"
+                            title="Smoke"><span class="tooltip">Smoke</span></button>
+                        <button data-type="cloud" id="cloudBtn" class="element-btn bg-blue-100 w-10 h-10 rounded shadow"
+                            title="Cloud"><span class="tooltip">Cloud</span></button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 bg-gray-700 p-3 rounded-lg mt-2">
+                    <label class="text-xs font-bold whitespace-nowrap uppercase tracking-wider">Brush Size</label>
+                    <input type="range" id="brushSize" min="1" max="15" value="5"
+                        class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                    <span id="brushVal" class="text-sm font-mono w-4">5</span>
+                </div>
+            </div>
+
+            <!-- TAB: LIFE -->
+            <div id="tab-life" class="tab-content space-y-4">
+
+                <!-- SOILS -->
+                <div>
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Soils</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button data-type="wet_sand" class="element-btn bg-[#b5a26a] w-10 h-10 rounded shadow"
+                            title="Wet Sand"><span class="tooltip">Wet Sand</span></button>
+                        <button data-type="fertile_soil" class="element-btn bg-[#32231e] w-10 h-10 rounded shadow"
+                            title="Fertile Soil"><span class="tooltip">Fertile Soil</span></button>
+                    </div>
+                </div>
+
+                <!-- SEEDS -->
+                <div>
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Seeds</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button data-type="grass_seed" id="grassSeedBtn"
+                            class="element-btn bg-[#9ccc65] w-10 h-10 rounded shadow" title="Grass Seed"><span
+                                class="tooltip">Grass Seed</span></button>
+                        <button data-type="tree_seed" id="treeSeedBtn"
+                            class="element-btn bg-[#8b4513] w-10 h-10 rounded shadow" title="Tree Seed"><span
+                                class="tooltip">Tree Seed</span></button>
+                        <button data-type="daisy_seed" id="daisySeedBtn"
+                            class="element-btn bg-[#fff176] w-10 h-10 rounded shadow" title="Daisy Seed"><span
+                                class="tooltip">Daisy Seed</span></button>
+                        <button data-type="massive_tree_seed" id="massiveTreeSeedBtn"
+                            class="element-btn bg-[#5d4037] w-10 h-10 rounded shadow" title="Massive Tree Seed"><span
+                                class="tooltip">Massive Tree Seed</span></button>
+                        <button data-type="mushroom_spore" id="mushroomSporeBtn"
+                            class="element-btn bg-[#ffcdd2] w-10 h-10 rounded shadow" title="Mushroom Spore"><span
+                                class="tooltip">Mushroom Spore</span></button>
+                        <button data-type="blue_mushroom_spore" id="blueMushroomSporeBtn"
+                            class="element-btn bg-[#64b5f6] w-10 h-10 rounded shadow" title="Big Blue Spore"><span
+                                class="tooltip">Big Blue Spore</span></button>
+                        <button data-type="cactus_seed" id="cactusSeedBtn"
+                            class="element-btn bg-[#2e7d32] w-10 h-10 rounded shadow" title="Cactus Seed"><span
+                                class="tooltip">Cactus Seed</span></button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB: TOOLS -->
+            <div id="tab-tools" class="tab-content">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Precision Tools</h3>
+                <div class="flex flex-wrap gap-4">
+                    <!-- ERASER -->
+                    <button data-type="eraser" id="eraserBtn"
+                        class="element-btn bg-white w-10 h-10 rounded shadow flex items-center justify-center"
+                        title="Eraser">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2">
+                            <path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z" />
+                        </svg>
+                        <span class="tooltip">Eraser</span>
+                    </button>
+
+                    <!-- SELECTION TOOL -->
+                    <button id="selectToolBtn"
+                        class="bg-blue-600 hover:bg-blue-700 w-10 h-10 rounded shadow flex items-center justify-center text-white"
+                        title="Select Area">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 3h18v18H3zM12 8v8M8 12h8" stroke-dasharray="4" />
+                            <rect x="3" y="3" width="18" height="18" stroke-dasharray="4 2" />
+                        </svg>
+                        <span class="tooltip">Select</span>
+                    </button>
+
+                    <!-- PICKUP TOOL -->
+                    <button id="pickupToolBtn"
+                        class="bg-yellow-600 hover:bg-yellow-700 w-10 h-10 rounded shadow flex items-center justify-center text-white"
+                        title="Pickup Structure">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M5 11V7a3 3 0 016 0v4m-2-4v4m-4 0V7a3 3 0 016 0v4m6-4v12a3 3 0 01-6 0V7a3 3 0 016 0z" />
+                            <path d="M7 11c0-1.1.9-2 2-2h6a2 2 0 012 2v9a4 4 0 01-8 0v-9z" />
+                        </svg>
+                        <span class="tooltip">Pickup</span>
+                    </button>
+                </div>
+
+                <div id="selectionActions" class="mt-4 hidden p-3 bg-gray-700 rounded-lg flex gap-2">
+                    <button id="deleteSelectionBtn"
+                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold uppercase transition-colors">Delete</button>
+                    <button id="replaceSelectionBtn"
+                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold uppercase transition-colors">Replace</button>
+                </div>
+
+                <div class="mt-4 text-xs text-gray-400 italic">
+                    Select mode: Drag to select area. Drag area to move.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 text-[10px] md:text-xs text-gray-500 text-center italic">
+        Right-click Cloud/Acid/Anti-Acid for settings
+    </div>
+
+    <script>
+        const canvas = document.getElementById('sandboxCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const fpsCounter = document.getElementById('fpsCounter');
+        const particleCounter = document.getElementById('particleCounter');
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushValDisplay = document.getElementById('brushVal');
+        const clearBtn = document.getElementById('clearBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const pauseLabel = document.getElementById('pauseLabel');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const elementBtns = document.querySelectorAll('.element-btn');
+        const currentElementDisplay = document.getElementById('currentElementDisplay');
+        const hoverInspector = document.getElementById('hoverInspector');
+        const brushCursor = document.getElementById('brushCursor');
+
+        const cloudGui = document.getElementById('cloudGui');
+        const cloudRainToggle = document.getElementById('cloudRainToggle');
+
+        const grassSeedGui = document.getElementById('grassSeedGui');
+        const grassSeedBtn = document.getElementById('grassSeedBtn');
+
+        const treeSeedGui = document.getElementById('treeSeedGui');
+        const treeSeedBtn = document.getElementById('treeSeedBtn');
+
+        const daisySeedGui = document.getElementById('daisySeedGui');
+        const daisySeedBtn = document.getElementById('daisySeedBtn');
+
+        const massiveTreeGui = document.getElementById('massiveTreeGui');
+        const massiveTreeSeedBtn = document.getElementById('massiveTreeSeedBtn');
+
+        const mushroomGui = document.getElementById('mushroomGui');
+        const mushroomSporeBtn = document.getElementById('mushroomSporeBtn');
+
+        const blueMushroomGui = document.getElementById('blueMushroomGui');
+        const blueMushroomSporeBtn = document.getElementById('blueMushroomSporeBtn');
+
+        const cactusGui = document.getElementById('cactusGui');
+        const cactusSeedBtn = document.getElementById('cactusSeedBtn');
+        const toggleCactusSpikes = document.getElementById('toggleCactusSpikes');
+
+        const selectToolBtn = document.getElementById('selectToolBtn');
+        const deleteSelectionBtn = document.getElementById('deleteSelectionBtn');
+        const selectionActions = document.getElementById('selectionActions');
+
+        let currentTool = 'brush'; // 'brush', 'select', 'move', 'eraser'
+        let selection = { x: 0, y: 0, w: 0, h: 0, active: false, dragging: false, dragStartX: 0, dragStartY: 0 };
+        let selectionBuffer = null; // To store moved particles
+        let selectionExtraBuffer = null;
+
+        const WIDTH = 200;
+        const HEIGHT = 150;
+        const CELL_SIZE = 4;
+
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
+        canvas.style.width = (WIDTH * CELL_SIZE) + 'px';
+        canvas.style.height = (HEIGHT * CELL_SIZE) + 'px';
+
+        const EMPTY = 0, STONE = 1, SAND = 2, WATER = 3, FIRE = 4, WOOD = 5, GUNPOWDER = 6, OIL = 7, STEAM = 8, ACID = 9, GAS = 10, TITANIUM = 11, ANTIACID = 12, CLOUD = 13, SOIL = 14, FERTILE_SOIL = 15, GRASS_SEED = 16, WET_SAND = 17, GRASS = 18, SEED_TOP = 19, TREE_SEED = 20, LEAVES = 21, GREEN_WOOD = 22, DAISY_SEED = 23, DAISY_STEM = 24, DAISY_FLOWER = 25, MASSIVE_TREE_SEED = 26, GIANT_WOOD = 27, MUSHROOM_SPORE = 28, MUSHROOM_STEM = 29, MUSHROOM_CAP = 30, BLUE_MUSHROOM_SPORE = 31, BLUE_MUSHROOM_STEM = 32, BLUE_MUSHROOM_CAP = 33, CACTUS_SEED = 34, CACTUS_BODY = 35, CACTUS_SPIKE = 36;
+
+        const MATERIALS = {
+            [EMPTY]: { name: 'Empty', color: [15, 15, 20], gravity: false, density: 0 },
+            [STONE]: { name: 'Stone', color: [120, 120, 120], density: 100 },
+            [SAND]: { name: 'Sand', color: [220, 180, 100], gravity: true, density: 10 },
+            [WET_SAND]: { name: 'Wet Sand', color: [194, 155, 78], gravity: true, density: 15, viscous: true },
+            [SOIL]: { name: 'Soil', color: [93, 64, 55], gravity: true, density: 10 },
+            [FERTILE_SOIL]: { name: 'Fertile Soil', color: [50, 35, 30], gravity: true, density: 12, viscous: true },
+            [GRASS_SEED]: { name: 'Grass Seed', color: [156, 204, 101], gravity: true, density: 20, singlePoint: true, verticalSeed: true },
+            [SEED_TOP]: { name: 'Seed Top', color: [156, 204, 101], gravity: false, density: 20, hidden: true },
+            [GRASS]: { name: 'Grass', color: [76, 175, 80], gravity: false, density: 100, flammable: true, burnChance: 0.1 },
+            [WATER]: { name: 'Water', color: [30, 120, 230], gravity: true, liquid: true, flowRate: 8, density: 8 },
+            [WOOD]: { name: 'Wood', color: [80, 50, 20], flammable: true, burnChance: 0.15, density: 20 },
+            [FIRE]: { name: 'Fire', color: [255, 100, 20], density: 1 },
+            [GUNPOWDER]: { name: 'Gunpowder', color: [70, 70, 75], gravity: true, flammable: true, burnChance: 0.4, explosive: true, density: 9 },
+            [OIL]: { name: 'Oil', color: [90, 40, 120], gravity: true, liquid: true, flowRate: 5, flammable: true, burnChance: 0.2, density: 7 },
+            [STEAM]: { name: 'Smoke', color: [220, 225, 230], rises: true, isGas: true, density: -1 },
+            [GAS]: { name: 'Gas', color: [150, 255, 150], rises: true, flammable: true, burnChance: 0.25, isGas: true, density: -2 },
+            [TITANIUM]: { name: 'Titanium', color: [60, 75, 90], indestructible: true, density: 1000 },
+            [ACID]: { name: 'Acid', color: [100, 255, 50], gravity: true, liquid: true, density: 8.5 },
+            [ANTIACID]: { name: 'Anti-Acid', color: [255, 100, 180], gravity: true, liquid: true, immuneToAcid: true, immuneToFire: true, density: 8.5 },
+            [CLOUD]: { name: 'Cloud', color: [240, 240, 255], rises: true, infinite: true, density: -5 },
+            [TREE_SEED]: { name: 'Tree Seed', color: [139, 69, 19], gravity: true, density: 25, singlePoint: true, verticalSeed: true },
+            [LEAVES]: { name: 'Leaves', color: [34, 139, 34], gravity: false, density: 100, flammable: true, burnChance: 0.2 },
+            [GREEN_WOOD]: { name: 'Green Wood', color: [100, 160, 60], density: 20, flammable: true, burnChance: 0.1 },
+            [DAISY_SEED]: { name: 'Daisy Seed', color: [255, 241, 118], gravity: true, density: 18, singlePoint: true, verticalSeed: true },
+            [DAISY_STEM]: { name: 'Daisy Stem', color: [100, 180, 80], gravity: false, density: 100, flammable: true, burnChance: 0.2 },
+            [DAISY_FLOWER]: { name: 'Daisy Flower', color: [255, 255, 255], gravity: false, density: 100, flammable: true, burnChance: 0.3 },
+            [MASSIVE_TREE_SEED]: { name: 'Massive Tree Seed', color: [93, 64, 55], gravity: true, density: 30, singlePoint: true, verticalSeed: true },
+            [GIANT_WOOD]: { name: 'Giant Wood', color: [78, 52, 46], density: 40, flammable: true, burnChance: 0.05 },
+            [MUSHROOM_SPORE]: { name: 'Mushroom Spore', color: [255, 205, 210], gravity: true, density: 10, singlePoint: true },
+            [MUSHROOM_STEM]: { name: 'Mushroom Stem', color: [245, 245, 245], gravity: false, density: 100, flammable: true, burnChance: 0.1 },
+            [MUSHROOM_CAP]: { name: 'Mushroom Cap', color: [229, 57, 53], gravity: false, density: 100, flammable: true, burnChance: 0.2 },
+            [BLUE_MUSHROOM_SPORE]: { name: 'Blue Spore', color: [100, 181, 246], gravity: true, density: 12, singlePoint: true },
+            [BLUE_MUSHROOM_STEM]: { name: 'Blue Stem', color: [225, 245, 254], gravity: false, density: 100, flammable: true, burnChance: 0.1 },
+            [BLUE_MUSHROOM_CAP]: { name: 'Blue Cap', color: [30, 136, 229], gravity: false, density: 100, flammable: true, burnChance: 0.1 },
+            [CACTUS_SEED]: { name: 'Cactus Seed', color: [27, 94, 32], gravity: true, density: 25, singlePoint: true },
+            [CACTUS_BODY]: { name: 'Cactus Body', color: [76, 175, 80], gravity: false, density: 100, flammable: true, burnChance: 0.05 },
+            [CACTUS_SPIKE]: { name: 'Cactus Spike', color: [255, 235, 59], gravity: false, density: 100, flammable: true, burnChance: 0.01 }
+        };
+
+        const STRUCTURE_FAMILIES = {
+            [GRASS]: [GRASS],
+            [WOOD]: [WOOD, GREEN_WOOD, LEAVES, GIANT_WOOD],
+            [GREEN_WOOD]: [WOOD, GREEN_WOOD, LEAVES, GIANT_WOOD],
+            [LEAVES]: [WOOD, GREEN_WOOD, LEAVES, GIANT_WOOD],
+            [GIANT_WOOD]: [WOOD, GREEN_WOOD, LEAVES, GIANT_WOOD],
+            [DAISY_STEM]: [DAISY_STEM, DAISY_FLOWER],
+            [DAISY_FLOWER]: [DAISY_STEM, DAISY_FLOWER],
+            [MUSHROOM_STEM]: [MUSHROOM_STEM, MUSHROOM_CAP],
+            [MUSHROOM_CAP]: [MUSHROOM_STEM, MUSHROOM_CAP],
+            [BLUE_MUSHROOM_STEM]: [BLUE_MUSHROOM_STEM, BLUE_MUSHROOM_CAP],
+            [BLUE_MUSHROOM_CAP]: [BLUE_MUSHROOM_STEM, BLUE_MUSHROOM_CAP],
+            [CACTUS_BODY]: [CACTUS_BODY, CACTUS_SPIKE],
+            [CACTUS_SPIKE]: [CACTUS_BODY, CACTUS_SPIKE]
+        };
+
+        let grid = new Int32Array(WIDTH * HEIGHT);
+        let extraState = new Int16Array(WIDTH * HEIGHT);
+
+        let selectedType = SAND;
+        let isMouseDown = false;
+        let isPaused = false;
+        let lastX = 0, lastY = 0;
+
+        let cloudRainEnabled = true;
+        let cloudRainType = WATER;
+        let cloudGoesAway = false;
+        let antiAcidAutoTrack = false;
+        let acidAutoTrack = false;
+        let antiAcidPerish = true;
+        let acidPerish = true;
+
+        // --- QUEST SYSTEM VARIABLES ---
+        let currentQuestIndex = 0;
+        let questFrameCount = 0;
+        let elementCounts = new Int32Array(25);
+        let totalParticlesCount = 0;
+        let canPlaceSinglePoint = true; // New flag for discrete placement
+        let cactusSpikesEnabled = false;
+
+        const QUESTS = [
+            { text: "Pour some Sand", check: c => c[SAND] > 50 },
+            { text: "Add some Water", check: c => c[WATER] > 50 },
+            { text: "Make Wet Sand (Water + Sand)", check: c => c[WET_SAND] > 10 },
+            { text: "Create Stone", check: c => c[STONE] > 50 },
+            { text: "Pour regular Soil", check: c => c[SOIL] > 50 },
+            { text: "Make Fertile Soil (Water + Soil)", check: c => c[FERTILE_SOIL] > 10 },
+            { text: "Plant Grass Seed on Soil", check: c => c[GRASS_SEED] > 0 || c[SEED_TOP] > 0 },
+            { text: "Grow Grass", check: c => c[GRASS] > 10 },
+            { text: "Place Wood", check: c => c[WOOD] > 50 },
+            { text: "Light a Fire", check: c => c[FIRE] > 10 },
+            { text: "Create Steam (Water + Fire)", check: c => c[STEAM] > 20 },
+            { text: "Pour Gunpowder", check: c => c[GUNPOWDER] > 50 },
+            { text: "Make an Explosion (Fire + Gunpowder)", check: c => c[FIRE] > 100 },
+            { text: "Pour Oil", check: c => c[OIL] > 50 },
+            { text: "Create a massive fire (Oil + Fire)", check: c => c[FIRE] > 150 && c[OIL] > 10 },
+            { text: "Build something with Titanium", check: c => c[TITANIUM] > 50 },
+            { text: "Pour some Acid", check: c => c[ACID] > 50 },
+            { text: "Create toxic Gas (Acid + Gunpowder)", check: c => c[GAS] > 20 },
+            { text: "Create a Cloud", check: c => c[CLOUD] > 20 },
+            { text: "Make it Rain (Cloud + Water)", check: c => c[CLOUD] > 10 && c[WATER] > 100 },
+            { text: "Pour Anti-Acid", check: c => c[ANTIACID] > 50 },
+            { text: "Neutralize Acid (Anti-Acid + Acid)", check: c => c[ANTIACID] > 10 && c[STEAM] > 50 },
+            { text: "Build a large Titanium tank", check: c => c[TITANIUM] > 150 },
+            { text: "Fill the tank with Acid", check: c => c[TITANIUM] > 100 && c[ACID] > 200 },
+            { text: "Clear the canvas (CLEAR button)", check: (c, total) => total === 0 }
+        ];
+
+        function updateQuestUI() {
+            const progress = document.getElementById('questProgress');
+            const textEl = document.getElementById('questText');
+            if (!progress || !textEl) return;
+
+            if (currentQuestIndex < QUESTS.length) {
+                progress.innerText = `${currentQuestIndex}/${QUESTS.length}`;
+                textEl.innerText = QUESTS[currentQuestIndex].text;
+                textEl.className = "text-xs md:text-sm text-gray-200 font-medium transition-all duration-300 min-h-[36px] flex items-center";
+            } else {
+                progress.innerText = `${QUESTS.length}/${QUESTS.length}`;
+                textEl.innerText = "🏆 All quests completed!";
+                textEl.className = "text-xs md:text-sm text-yellow-400 font-bold transition-all duration-300 min-h-[36px] flex items-center drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]";
+            }
+        }
+
+        function completeQuest() {
+            const textEl = document.getElementById('questText');
+            textEl.classList.add('line-through', 'text-green-400', 'scale-[1.02]');
+            textEl.classList.remove('text-gray-200');
+
+            setTimeout(() => {
+                currentQuestIndex++;
+                updateQuestUI();
+            }, 1500);
+        }
+
+        function checkQuests() {
+            if (currentQuestIndex >= QUESTS.length) return;
+            const textEl = document.getElementById('questText');
+            if (textEl && textEl.classList.contains('line-through')) return; // already animating
+
+            if (QUESTS[currentQuestIndex].check(elementCounts, totalParticlesCount)) {
+                completeQuest();
+            }
+        }
+
+        function init() {
+            grid.fill(EMPTY);
+            extraState.fill(0);
+            requestAnimationFrame(loop);
+            updateBrushCursorSize();
+            updateQuestUI();
+        }
+
+        function updateBrushCursorSize() {
+            const mat = MATERIALS[selectedType];
+            const isSingle = mat?.singlePoint;
+
+            if (currentTool === 'select') {
+                brushCursor.style.borderRadius = "4px";
+                brushCursor.style.width = '20px';
+                brushCursor.style.height = '20px';
+                brushCursor.style.borderColor = "#60a5fa";
+                brushCursor.classList.add('cursor-select');
+                return;
+            } else {
+                brushCursor.classList.remove('cursor-select');
+            }
+
+            if (isSingle) {
+                brushCursor.style.borderRadius = "0px";
+                if (mat.verticalSeed) {
+                    brushCursor.style.width = CELL_SIZE + 'px';
+                    brushCursor.style.height = (CELL_SIZE * 2) + 'px';
+                } else {
+                    brushCursor.style.width = CELL_SIZE + 'px';
+                    brushCursor.style.height = CELL_SIZE + 'px';
+                }
+            } else {
+                brushCursor.style.borderRadius = "50%";
+                const radius = parseInt(brushSizeInput.value);
+                const size = (radius * 2 + 1) * CELL_SIZE;
+                brushCursor.style.width = size + 'px';
+                brushCursor.style.height = size + 'px';
+            }
+
+            // Dynamic color based on material
+            if (mat) {
+                const color = mat.color;
+                brushCursor.style.borderColor = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.8)`;
+                brushCursor.style.boxShadow = `0 0 15px rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.3)`;
+            } else {
+                brushCursor.style.borderColor = "rgba(255, 255, 255, 0.8)";
+            }
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: Math.floor((clientX - rect.left) * scaleX),
+                y: Math.floor((clientY - rect.top) * scaleY),
+                rawX: clientX,
+                rawY: clientY
+            };
+        }
+
+        function handleStart(e) {
+            if (cloudGui.style.display === 'flex' || acidGui.style.display === 'flex' || antiAcidGui.style.display === 'flex' || grassSeedGui.style.display === 'flex' || treeSeedGui.style.display === 'flex' || daisySeedGui.style.display === 'flex' || massiveTreeGui.style.display === 'flex' || mushroomGui.style.display === 'flex' || blueMushroomGui.style.display === 'flex' || cactusGui.style.display === 'flex') return;
+
+            isMouseDown = true;
+            canPlaceSinglePoint = true; // Reset per click
+            const pos = getMousePos(e);
+
+            if (currentTool === 'select') {
+                // IMPROVED LOGIC:
+                // If click is inside active selection, switch to MOVE mode.
+                if (selection.active &&
+                    pos.x >= Math.min(selection.x, selection.x + selection.w) &&
+                    pos.x < Math.max(selection.x, selection.x + selection.w) &&
+                    pos.y >= Math.min(selection.y, selection.y + selection.h) &&
+                    pos.y < Math.max(selection.y, selection.y + selection.h)) {
+
+                    currentTool = 'move';
+                    selection.dragging = true;
+                    selection.dragStartX = pos.x - selection.x; // Delta
+                    selection.dragStartY = pos.y - selection.y;
+
+                    // CUT logic: Extract pixels to buffer
+                    cutSelection();
+
+                } else {
+                    selection.active = false;
+                    selection.x = pos.x;
+                    selection.y = pos.y;
+                    selection.w = 0;
+                    selection.h = 0;
+                }
+                return;
+            } else if (currentTool === 'pickup') {
+                const targetType = grid[pos.y * WIDTH + pos.x];
+                if (targetType === EMPTY) return;
+
+                const connected = findConnectedStructure(pos.x, pos.y);
+                if (connected.pixels.length > 0) {
+                    selection.x = connected.minX;
+                    selection.y = connected.minY;
+                    selection.w = (connected.maxX - connected.minX) + 1;
+                    selection.h = (connected.maxY - connected.minY) + 1;
+                    selection.active = true;
+
+                    currentTool = 'move';
+                    selection.dragging = true;
+                    selection.dragStartX = pos.x - selection.x;
+                    selection.dragStartY = pos.y - selection.y;
+
+                    cutSelection();
+                }
+                return;
+            } else if (currentTool === 'move') {
+                // Already in move mode?
+                selection.dragging = true;
+                selection.dragStartX = pos.x - selection.x;
+                selection.dragStartY = pos.y - selection.y;
+                return;
+            }
+
+            lastX = pos.x; lastY = pos.y;
+            draw(pos.x, pos.y);
+        }
+
+        function handleMove(e) {
+            const pos = getMousePos(e);
+            const rect = canvas.getBoundingClientRect();
+            const inGui = cloudGui.style.display === 'flex' || acidGui.style.display === 'flex' || antiAcidGui.style.display === 'flex' || grassSeedGui.style.display === 'flex' || treeSeedGui.style.display === 'flex' || daisySeedGui.style.display === 'flex' || massiveTreeGui.style.display === 'flex' || mushroomGui.style.display === 'flex' || blueMushroomGui.style.display === 'flex' || cactusGui.style.display === 'flex';
+
+            // --- SELECTION TOOL OVERLAY & LOGIC ---
+            if (currentTool === 'select' || currentTool === 'move') {
+                // Ensure custom cursor follows and is visible
+                brushCursor.style.display = 'block';
+                brushCursor.style.left = pos.rawX + 'px';
+                brushCursor.style.top = pos.rawY + 'px';
+                updateBrushCursorSize(); // Updates styles for select mode
+
+                // Redraw canvas to clear previous overlay (inefficient but works for 200x150)
+                // Actually, we don't have a render loop that clears the canvas every frame for UI.
+                // We rely on the game loop 'loop()' to render the grid to canvas.
+                // We need to hook into the 'loop()' or 'drawGrid()' to render the selection rect ON TOP.
+                // For now, let's just update state. Rendering will happen in loop().
+
+                if (isMouseDown && currentTool === 'select') {
+                    // Update selection width/height
+                    selection.w = pos.x - selection.x;
+                    selection.h = pos.y - selection.y;
+                    selection.active = true;
+                } else if (isMouseDown && currentTool === 'move' && selection.dragging) {
+                    // Move logic handled in loop or separate function? 
+                    // Actually, usually move logic changes the selection X/Y.
+                    selection.x = pos.x - selection.dragStartX;
+                    selection.y = pos.y - selection.dragStartY;
+                }
+
+                // Cursor logic for hover logic could go here
+                return;
+            }
+
+            if (pos.rawX >= rect.left && pos.rawX <= rect.right && pos.rawY >= rect.top && pos.rawY <= rect.bottom && !inGui) {
+                brushCursor.style.display = 'block';
+                brushCursor.style.left = pos.rawX + 'px';
+                brushCursor.style.top = pos.rawY + 'px';
+            } else {
+                brushCursor.style.display = 'none';
+            }
+
+            if (pos.x >= 0 && pos.x < WIDTH && pos.y >= 0 && pos.y < HEIGHT && !inGui) {
+                const type = grid[pos.y * WIDTH + pos.x];
+                if (type !== EMPTY) {
+                    hoverInspector.innerText = MATERIALS[type].name;
+                    hoverInspector.style.display = 'block';
+                    hoverInspector.style.left = (pos.rawX + 15) + 'px';
+                    hoverInspector.style.top = (pos.rawY - 10) + 'px';
+                } else {
+                    hoverInspector.style.display = 'none';
+                }
+            } else {
+                hoverInspector.style.display = 'none';
+            }
+
+            if (!isMouseDown) return;
+            line(lastX, lastY, pos.x, pos.y, (x, y) => draw(x, y));
+            lastX = pos.x; lastY = pos.y;
+        }
+
+        function line(x0, y0, x1, y1, callback) {
+            const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+            const sx = (x0 < x1) ? 1 : -1, sy = (y0 < y1) ? 1 : -1;
+            let err = dx - dy;
+            while (true) {
+                callback(x0, y0);
+                if (x0 === x1 && y0 === y1) break;
+                const e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; x0 += sx; }
+                if (e2 < dx) { err += dx; y0 += sy; }
+            }
+        }
+
+        function draw(cx, cy) {
+            // If we are in select mode (and not dragging), we don't draw particles with brush
+            if (currentTool === 'select' || currentTool === 'move') return;
+
+            const matConfig = MATERIALS[selectedType];
+
+
+            if (matConfig?.singlePoint) {
+                if (!canPlaceSinglePoint) return; // Limit to one per click for seeds
+                if (cx >= 0 && cx < WIDTH && cy >= 0 && cy < HEIGHT) {
+                    if (matConfig.verticalSeed) {
+                        // Place Bottom
+                        if (grid[cy * WIDTH + cx] === EMPTY) {
+                            grid[cy * WIDTH + cx] = selectedType;
+                            extraState[cy * WIDTH + cx] = 0;
+                            canPlaceSinglePoint = false; // Mark as placed
+                        }
+                        // Place Top
+                        if (cy > 0 && grid[(cy - 1) * WIDTH + cx] === EMPTY) {
+                            grid[(cy - 1) * WIDTH + cx] = SEED_TOP;
+                            extraState[(cy - 1) * WIDTH + cx] = 0;
+                        }
+                    } else {
+                        if (grid[cy * WIDTH + cx] === EMPTY) {
+                            grid[cy * WIDTH + cx] = selectedType;
+                            extraState[cy * WIDTH + cx] = 0;
+                            canPlaceSinglePoint = false; // Mark as placed
+                        }
+                    }
+                }
+                return;
+            }
+
+            const radius = parseInt(brushSizeInput.value);
+            for (let y = -radius; y <= radius; y++) {
+                for (let x = -radius; x <= radius; x++) {
+                    if (x * x + y * y <= radius * radius) {
+                        const nx = cx + x, ny = cy + y;
+                        if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                            if (selectedType === -1) {
+                                grid[ny * WIDTH + nx] = EMPTY;
+                                extraState[ny * WIDTH + nx] = 0;
+                            } else {
+                                const current = grid[ny * WIDTH + nx];
+                                if (current === EMPTY || selectedType === STONE || selectedType === WOOD || selectedType === TITANIUM) {
+                                    grid[ny * WIDTH + nx] = selectedType;
+                                    extraState[ny * WIDTH + nx] = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function explode(cx, cy, g) {
+            const r = 10;
+            for (let y = -r; y <= r; y++) {
+                for (let x = -r; x <= r; x++) {
+                    const nx = cx + x, ny = cy + y;
+                    if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                        if (x * x + y * y <= r * r && Math.random() > 0.3) {
+                            if (grid[ny * WIDTH + nx] !== TITANIUM && grid[ny * WIDTH + nx] !== ANTIACID) {
+                                g[ny * WIDTH + nx] = FIRE;
+                                extraState[ny * WIDTH + nx] = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function findTarget(startX, startY, range, targetTypes, avoidTypes = []) {
+            let minDist = Infinity;
+            let targetX = -1, targetY = -1;
+            let fearX = 0, fearY = 0;
+            let hasFear = false;
+
+            for (let oy = -range; oy <= range; oy++) {
+                for (let ox = -range; ox <= range; ox++) {
+                    const nx = startX + ox, ny = startY + oy;
+                    if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                        const type = grid[ny * WIDTH + nx];
+                        if (avoidTypes.includes(type)) {
+                            fearX -= ox; fearY -= oy;
+                            hasFear = true;
+                        } else if (targetTypes.includes(type)) {
+                            const d = ox * ox + oy * oy;
+                            if (d < minDist) {
+                                minDist = d; targetX = nx; targetY = ny;
+                            }
+                        }
+                    }
+                }
+            }
+            if (hasFear) return { x: startX + Math.sign(fearX), y: startY + Math.sign(fearY), forced: true };
+            return targetX !== -1 ? { x: targetX, y: targetY, forced: false } : null;
+        }
+
+        function update() {
+            if (isPaused) return;
+
+            const newGrid = new Int32Array(grid);
+            const nextExtra = new Int16Array(extraState);
+            const moved = new Uint8Array(WIDTH * HEIGHT);
+
+            // --- PHASE 1: RISING PARTICLES (Top-Down) ---
+            // Process from top to bottom so rising particles move into empty space immediately
+            for (let y = 0; y < HEIGHT; y++) {
+                const xDir = Math.random() > 0.5 ? 1 : -1;
+                for (let i = 0; i < WIDTH; i++) {
+                    const x = xDir === 1 ? i : WIDTH - 1 - i;
+                    const idx = y * WIDTH + x;
+                    const type = grid[idx];
+                    if (type === EMPTY || moved[idx]) continue;
+
+                    const mat = MATERIALS[type];
+                    if (!mat.rises) continue; // Skip non-rising particles in this phase
+
+                    if (y > 0) {
+                        const upIdx = (y - 1) * WIDTH + x;
+                        const upType = grid[upIdx];
+                        const upMat = MATERIALS[upType];
+
+                        // Check against NEW grid state for immediate updates
+                        const currentUpType = newGrid[upIdx];
+                        const currentUpMat = MATERIALS[currentUpType];
+
+                        // Displacement logic: Using current grid state
+                        const canSwapWith = (currentUpType === EMPTY) ||
+                            (currentUpMat?.liquid) ||
+                            (currentUpMat?.gravity) ||
+                            (upType === STEAM && type === STEAM) ||
+                            (upType === GAS && type === GAS) ||
+                            (type !== CLOUD && upType === CLOUD);
+
+                        if (canSwapWith) {
+                            swap(x, y, x, y - 1, newGrid, nextExtra, moved);
+                        } else {
+                            const side = Math.random() > 0.5 ? 1 : -1;
+                            const nx = x + side;
+                            if (nx >= 0 && nx < WIDTH) {
+                                const diagIdx = (y - 1) * WIDTH + nx;
+                                const diagType = newGrid[diagIdx]; // Check new grid
+                                const diagMat = MATERIALS[diagType];
+
+                                if (diagType === EMPTY || diagMat?.liquid || diagMat?.gravity || (diagType === type && Math.random() > 0.5)) {
+                                    swap(x, y, x + side, y - 1, newGrid, nextExtra, moved);
+                                } else {
+                                    const horizIdx = y * WIDTH + nx;
+                                    if (newGrid[horizIdx] === EMPTY) {
+                                        swap(x, y, x + side, y, newGrid, nextExtra, moved);
+                                    }
+                                }
+                            }
+                        }
+                    } else if (!mat.infinite && Math.random() > 0.95) {
+                        newGrid[idx] = EMPTY;
+                        moved[idx] = 1; // Mark as processed
+                    }
+                }
+            }
+
+            // --- PHASE 2: FALLING / REACTIONS (Bottom-Up) ---
+            for (let y = HEIGHT - 1; y >= 0; y--) {
+                const xDir = Math.random() > 0.5 ? 1 : -1;
+                for (let i = 0; i < WIDTH; i++) {
+                    const x = xDir === 1 ? i : WIDTH - 1 - i;
+                    const idx = y * WIDTH + x;
+
+                    // Skip if already moved in Phase 1 (rising particles)
+                    if (moved[idx]) continue;
+
+                    const type = grid[idx];
+                    if (type === EMPTY) continue;
+
+                    const mat = MATERIALS[type];
+
+                    // --- Absorption / Transformation ---
+                    if (type === WATER) {
+                        const ns = [{ nx: x, ny: y - 1 }, { nx: x, ny: y + 1 }, { nx: x - 1, ny: y }, { nx: x + 1, ny: y }];
+                        for (const n of ns) {
+                            if (n.nx < 0 || n.nx >= WIDTH || n.ny < 0 || n.ny >= HEIGHT) continue;
+                            const nIdx = n.ny * WIDTH + n.nx;
+                            if (grid[nIdx] === SAND && Math.random() < 0.1) {
+                                newGrid[nIdx] = WET_SAND;
+                                newGrid[idx] = EMPTY;
+                                break;
+                            }
+                            if (grid[nIdx] === SOIL && Math.random() < 0.1) {
+                                newGrid[nIdx] = FERTILE_SOIL;
+                                newGrid[idx] = EMPTY;
+                                break;
+                            }
+                        }
+                    }
+
+                    // --- GRASS GROWTH ---
+                    if (type === GRASS) {
+                        if (y > 0 && Math.random() < 0.05) {
+                            const upIdx = (y - 1) * WIDTH + x;
+                            if (grid[upIdx] === EMPTY) {
+                                let height = 0;
+                                for (let h = 1; h < 11; h++) {
+                                    if (y + h < HEIGHT && grid[(y + h) * WIDTH + x] === GRASS) height++;
+                                    else break;
+                                }
+                                if (height < 10) newGrid[upIdx] = GRASS;
+                            }
+                        }
+                    }
+
+                    // --- TREE GROWTH ---
+                    if ((type === WOOD || type === GREEN_WOOD) && extraState[idx] > 0) {
+                        // Mark as processed to prevent multiple updates in one frame
+                        if (!moved[idx]) {
+                            const growthRemaining = extraState[idx];
+                            const upIdx = (y - 1) * WIDTH + x;
+
+                            if (y > 0 && (grid[upIdx] === EMPTY || grid[upIdx] === STEAM || grid[upIdx] === FIRE)) {
+                                if (Math.random() < 0.3) { // Tree grows slower (30% chance per frame)
+                                    if (growthRemaining > 8) {
+                                        newGrid[upIdx] = GREEN_WOOD; // Grow Green!
+                                        nextExtra[upIdx] = growthRemaining - 1;
+                                        moved[upIdx] = 1;
+                                        nextExtra[idx] = 0; // Current stops being a tip
+                                    } else {
+                                        // Near top: Grow leaves
+                                        newGrid[upIdx] = LEAVES;
+                                        nextExtra[upIdx] = growthRemaining - 1;
+                                        moved[upIdx] = 1;
+
+                                        // Sprout leaves around
+                                        const leafSproutChance = 0.5;
+                                        for (let lx = -2; lx <= 2; lx++) {
+                                            for (let ly = -2; ly <= 2; ly++) {
+                                                if (Math.random() < leafSproutChance) {
+                                                    const nx = x + lx, ny = y + ly;
+                                                    if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                                                        const nIdx = ny * WIDTH + nx;
+                                                        if (grid[nIdx] === EMPTY) {
+                                                            newGrid[nIdx] = LEAVES;
+                                                            nextExtra[nIdx] = 0;
+                                                            moved[nIdx] = 1;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        nextExtra[idx] = 0;
+                                    }
+                                }
+                            } else {
+                                // Blocked? Stop growing tip
+                                nextExtra[idx] = 0;
+                            }
+                        }
+                    }
+
+                    // --- GREEN WOOD TRANSFORM ---
+                    if (type === GREEN_WOOD && extraState[idx] === 0) {
+                        if (Math.random() < 0.005) { // Slowly turn into wood
+                            newGrid[idx] = WOOD;
+                        }
+                    }
+
+                    // --- DAISY GROWTH ---
+                    if (type === DAISY_STEM && extraState[idx] > 0) {
+                        if (!moved[idx]) {
+                            const growthRemaining = extraState[idx];
+                            const upIdx = (y - 1) * WIDTH + x;
+
+                            if (y > 0 && (grid[upIdx] === EMPTY || grid[upIdx] === STEAM)) {
+                                if (Math.random() < 0.1) { // Grow even slower (was 0.2)
+                                    if (growthRemaining > 3) {
+                                        newGrid[upIdx] = DAISY_STEM;
+                                        nextExtra[upIdx] = growthRemaining - 1;
+                                        moved[upIdx] = 1;
+                                    } else {
+                                        // Bloom bigger flower head
+                                        const headRadius = 1;
+                                        for (let lx = -headRadius; lx <= headRadius; lx++) {
+                                            for (let ly = -headRadius; ly <= headRadius; ly++) {
+                                                const nx = x + lx, ny = (y - 1) + ly;
+                                                if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                                                    const nIdx = ny * WIDTH + nx;
+                                                    if (grid[nIdx] === EMPTY || grid[nIdx] === STEAM) {
+                                                        newGrid[nIdx] = DAISY_FLOWER;
+                                                        nextExtra[nIdx] = 0;
+                                                        moved[nIdx] = 1;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    nextExtra[idx] = 0;
+                                }
+                            } else {
+                                nextExtra[idx] = 0;
+                            }
+                        }
+                    }
+
+                    // --- MASSIVE TREE GROWTH ---
+                    if (type === GIANT_WOOD && extraState[idx] > 0) {
+                        if (!moved[idx]) {
+                            const growthRemaining = extraState[idx];
+                            const upIdx = (y - 1) * WIDTH + x;
+
+                            if (y > 0 && (grid[upIdx] === EMPTY || grid[upIdx] === STEAM || grid[upIdx] === FIRE)) {
+                                if (Math.random() < 0.25) { // Grow slow
+                                    if (growthRemaining > 15) {
+                                        newGrid[upIdx] = GIANT_WOOD;
+                                        nextExtra[upIdx] = growthRemaining - 1;
+                                        moved[upIdx] = 1;
+
+                                        // Thickening: chance to place wood to sides
+                                        if (Math.random() < 0.6) {
+                                            for (let sx = -1; sx <= 1; sx++) {
+                                                if (sx === 0) continue;
+                                                const sideIdx = upIdx + sx;
+                                                if (x + sx >= 0 && x + sx < WIDTH) {
+                                                    if (grid[sideIdx] === EMPTY) {
+                                                        newGrid[sideIdx] = GIANT_WOOD;
+                                                        nextExtra[sideIdx] = 0; // Not a tip
+                                                        moved[sideIdx] = 1;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        nextExtra[idx] = 0;
+                                    } else {
+                                        // Massive Bloom!
+                                        const leafRadius = 8;
+                                        for (let ly = -leafRadius; ly <= 2; ly++) {
+                                            for (let lx = -leafRadius; lx <= leafRadius; lx++) {
+                                                if (lx * lx + ly * ly <= leafRadius * leafRadius) {
+                                                    const nx = x + lx, ny = (y - 1) + ly;
+                                                    if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                                                        const nIdx = ny * WIDTH + nx;
+                                                        if (grid[nIdx] === EMPTY || grid[nIdx] === STEAM) {
+                                                            newGrid[nIdx] = LEAVES;
+                                                            nextExtra[nIdx] = 0;
+                                                            moved[nIdx] = 1;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        nextExtra[idx] = 0;
+                                    }
+                                }
+                            } else {
+                                nextExtra[idx] = 0;
+                            }
+                        }
+                    }
+
+                    // --- MUSHROOM GROWTH ---
+                    if (type === MUSHROOM_STEM && extraState[idx] > 0) {
+                        if (!moved[idx]) {
+                            const growthRemaining = extraState[idx];
+                            const upIdx = (y - 1) * WIDTH + x;
+
+                            if (y > 0 && (grid[upIdx] === EMPTY || grid[upIdx] === STEAM)) {
+                                if (Math.random() < 0.15) { // Grow slow
+                                    if (growthRemaining > 2) {
+                                        newGrid[upIdx] = MUSHROOM_STEM;
+                                        nextExtra[upIdx] = growthRemaining - 1;
+                                        moved[upIdx] = 1;
+                                    } else {
+                                        // Bloom Cap!
+                                        newGrid[upIdx] = MUSHROOM_CAP;
+                                        nextExtra[upIdx] = 0;
+                                        moved[upIdx] = 1;
+
+                                        // Wide cap expansion
+                                        const capWidth = 2 + Math.floor(Math.random() * 2);
+                                        for (let sx = -capWidth; sx <= capWidth; sx++) {
+                                            if (sx === 0) continue;
+                                            const nx = x + sx;
+                                            if (nx >= 0 && nx < WIDTH) {
+                                                const nIdx = y * WIDTH + nx; // Cap starts at the tip level
+                                                const nIdxUp = (y - 1) * WIDTH + nx; // Slightly curved up
+                                                if (grid[nIdx] === EMPTY || grid[nIdx] === STEAM) {
+                                                    // Randomly place a white spot (using Mushroom Stem material)
+                                                    if (Math.random() < 0.2) {
+                                                        newGrid[nIdx] = MUSHROOM_STEM;
+                                                    } else {
+                                                        newGrid[nIdx] = MUSHROOM_CAP;
+                                                    }
+                                                    nextExtra[nIdx] = 0;
+                                                    moved[nIdx] = 1;
+
+                                                    // Curve the cap edges slightly
+                                                    if (Math.abs(sx) > 1 && (grid[nIdxUp] === EMPTY || grid[nIdxUp] === STEAM)) {
+                                                        newGrid[nIdxUp] = MUSHROOM_CAP;
+                                                        nextExtra[nIdxUp] = 0;
+                                                        moved[nIdxUp] = 1;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    nextExtra[idx] = 0;
+                                }
+                            } else {
+                                nextExtra[idx] = 0;
+                            }
+                        }
+                    }
+
+                    // --- BIG BLUE MUSHROOM GROWTH ---
+                    if (type === BLUE_MUSHROOM_STEM && extraState[idx] > 0) {
+                        if (!moved[idx]) {
+                            const growthRemaining = extraState[idx];
+                            const upIdx = (y - 1) * WIDTH + x;
+
+                            if (y > 0 && (grid[upIdx] === EMPTY || grid[upIdx] === STEAM)) {
+                                if (Math.random() < 0.2) { // Grow slow
+                                    if (growthRemaining > 2) {
+                                        newGrid[upIdx] = BLUE_MUSHROOM_STEM;
+                                        nextExtra[upIdx] = growthRemaining - 1;
+                                        moved[upIdx] = 1;
+
+                                        // Thickening: chance to place stem to sides (2-3px wide)
+                                        if (Math.random() < 0.4) {
+                                            const sx = (Math.random() < 0.5) ? -1 : 1;
+                                            const sideIdx = upIdx + sx;
+                                            if (x + sx >= 0 && x + sx < WIDTH) {
+                                                if (grid[sideIdx] === EMPTY || grid[sideIdx] === STEAM) {
+                                                    newGrid[sideIdx] = BLUE_MUSHROOM_STEM;
+                                                    nextExtra[sideIdx] = 0; // Not a growth tip
+                                                    moved[sideIdx] = 1;
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Massive Terraria Bloom!
+                                        newGrid[upIdx] = BLUE_MUSHROOM_CAP;
+                                        nextExtra[upIdx] = 0;
+                                        moved[upIdx] = 1;
+
+                                        const capRadius = 5 + Math.floor(Math.random() * 2);
+                                        for (let ly = -Math.floor(capRadius * 0.7); ly <= 1; ly++) {
+                                            for (let lx = -capRadius; lx <= capRadius; lx++) {
+                                                // Dome Shape: Semi-elliptical check
+                                                // Normalizing lx/capRadius and ly/radius_y
+                                                const normX = lx / capRadius;
+                                                const normY = (ly + 0.5) / (capRadius * 0.7);
+                                                if (normX * normX + normY * normY <= 1 && ly <= 0) {
+                                                    const nx = x + lx, ny = (y - 1) + ly;
+                                                    if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                                                        const nIdx = ny * WIDTH + nx;
+                                                        if (grid[nIdx] === EMPTY || grid[nIdx] === STEAM) {
+                                                            // Randomly place a white spot (using Mushroom Stem material)
+                                                            if (Math.random() < 0.15) {
+                                                                newGrid[nIdx] = MUSHROOM_STEM;
+                                                            } else {
+                                                                newGrid[nIdx] = BLUE_MUSHROOM_CAP;
+                                                            }
+                                                            nextExtra[nIdx] = 0;
+                                                            moved[nIdx] = 1;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    nextExtra[idx] = 0;
+                                }
+                            } else {
+                                nextExtra[idx] = 0;
+                            }
+                        }
+                    }
+
+                    // --- CACTUS GROWTH + SPIKES ---
+                    if (type === CACTUS_BODY) {
+                        if (!moved[idx]) {
+                            const growthRemaining = extraState[idx];
+                            const upIdx = (y - 1) * WIDTH + x;
+
+                            // Only try to grow upwards if still has growth left
+                            if (growthRemaining > 0) {
+                                if (y > 0 && (grid[upIdx] === EMPTY || grid[upIdx] === STEAM)) {
+                                    if (Math.random() < 0.25) {
+                                        newGrid[upIdx] = CACTUS_BODY;
+                                        nextExtra[upIdx] = growthRemaining - 1;
+                                        moved[upIdx] = 1;
+
+                                        // Sprout arm chance
+                                        if (growthRemaining > 5 && Math.random() < 0.15) {
+                                            const side = (Math.random() < 0.5) ? -1 : 1;
+                                            const sideIdx = (y - 1) * WIDTH + (x + side);
+                                            if (x + side >= 0 && x + side < WIDTH) {
+                                                if (grid[sideIdx] === EMPTY || grid[sideIdx] === STEAM) {
+                                                    newGrid[sideIdx] = CACTUS_BODY;
+                                                    nextExtra[sideIdx] = 3 + Math.floor(Math.random() * 3);
+                                                    moved[sideIdx] = 1;
+                                                }
+                                            }
+                                        }
+                                        nextExtra[idx] = 0;
+                                    }
+                                } else {
+                                    nextExtra[idx] = 0;
+                                }
+                            }
+
+                            // Spike spawning — only on non-tip cells, one spike per side max
+                            if (cactusSpikesEnabled && Math.random() < 0.005) {
+                                // Only allow spikes on body cells that have body below (not the tip)
+                                const belowBodyType = (y < HEIGHT - 1) ? grid[(y + 1) * WIDTH + x] : EMPTY;
+                                const isBodyCell = (belowBodyType === CACTUS_BODY);
+
+                                if (isBodyCell) {
+                                    // Check both sides — don't spawn if either side already has a spike
+                                    const leftType = (x > 0) ? grid[y * WIDTH + (x - 1)] : CACTUS_BODY;
+                                    const rightType = (x < WIDTH - 1) ? grid[y * WIDTH + (x + 1)] : CACTUS_BODY;
+                                    const neitherSideHasSpike = leftType !== CACTUS_SPIKE && rightType !== CACTUS_SPIKE;
+
+                                    if (neitherSideHasSpike) {
+                                        // Pick the free side
+                                        const side = (leftType === EMPTY || leftType === STEAM) ? -1
+                                            : (rightType === EMPTY || rightType === STEAM) ? 1
+                                                : 0;
+                                        if (side !== 0) {
+                                            const spikeIdx = y * WIDTH + (x + side);
+                                            newGrid[spikeIdx] = CACTUS_SPIKE;
+                                            nextExtra[spikeIdx] = 0;
+                                            moved[spikeIdx] = 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- CLOUD ---
+                    if (type === CLOUD) {
+                        if (cloudRainEnabled && Math.random() < 0.05) {
+                            if (y < HEIGHT - 1) {
+                                const bIdx = (y + 1) * WIDTH + x;
+                                if (grid[bIdx] === EMPTY) {
+                                    newGrid[bIdx] = cloudRainType;
+                                    // Track drops dropped per cloud pixel
+                                    if (cloudGoesAway) {
+                                        nextExtra[idx] = (extraState[idx] || 0) + 1;
+                                        // Each pixel evaporates after 3 drops
+                                        if (nextExtra[idx] >= 3) {
+                                            newGrid[idx] = EMPTY;
+                                            nextExtra[idx] = 0;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- ACID INTERACTIONS ---
+                    if (type === ACID || type === ANTIACID) {
+                        const ns = [{ nx: x, ny: y - 1 }, { nx: x, ny: y + 1 }, { nx: x - 1, ny: y }, { nx: x + 1, ny: y }];
+                        for (const n of ns) {
+                            if (n.nx < 0 || n.nx >= WIDTH || n.ny < 0 || n.ny >= HEIGHT) continue;
+                            const nIdx = n.ny * WIDTH + n.nx;
+                            const nType = grid[nIdx];
+
+                            if (type === ACID) {
+                                if (nType === ANTIACID) {
+                                    newGrid[idx] = STEAM;
+                                    nextExtra[idx] = 0;
+                                } else if (nType !== EMPTY && nType !== ACID && nType !== FIRE && nType !== STEAM && !MATERIALS[nType].isGas && !MATERIALS[nType].immuneToAcid && nType !== TITANIUM) {
+                                    // Eat solids/liquids
+                                    if (Math.random() > 0.9) {
+                                        newGrid[nIdx] = (nType === GUNPOWDER) ? GAS : STEAM;
+                                        nextExtra[nIdx] = 0;
+                                        if (acidPerish) {
+                                            newGrid[idx] = EMPTY;
+                                            nextExtra[idx] = 0;
+                                        }
+                                    }
+                                }
+                            } else if (type === ANTIACID && nType === ACID) {
+                                newGrid[nIdx] = STEAM;
+                                nextExtra[nIdx] = 0;
+                                if (antiAcidPerish) {
+                                    newGrid[idx] = STEAM;
+                                    nextExtra[idx] = 0;
+                                }
+                            }
+                        }
+                    }
+
+                    // --- AI TRACKING ---
+                    if ((type === ANTIACID && antiAcidAutoTrack) || (type === ACID && acidAutoTrack)) {
+                        if (Math.random() > 0.2) {
+                            const targets = type === ANTIACID ? [ACID] : [SAND, WATER, STONE, WOOD, GUNPOWDER, OIL, GAS, WET_SAND, SOIL, FERTILE_SOIL, GRASS_SEED];
+                            const avoid = type === ACID ? [ANTIACID] : [];
+                            const target = findTarget(x, y, 20, targets, avoid);
+                            if (target) {
+                                const nx = x + Math.sign(target.x - x);
+                                const ny = y + Math.sign(target.y - y);
+                                if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                                    const tType = grid[ny * WIDTH + nx];
+                                    // Acid can displace steam/smoke to reach wood/solids
+                                    if (tType === EMPTY || MATERIALS[tType].isGas) {
+                                        swap(x, y, nx, ny, newGrid, nextExtra, moved);
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- FIRE / THERMAL ---
+                    if (type === FIRE || type === GAS) {
+                        const ns = [{ nx: x, ny: y - 1 }, { nx: x, ny: y + 1 }, { nx: x - 1, ny: y }, { nx: x + 1, ny: y }];
+                        for (const n of ns) {
+                            if (n.nx < 0 || n.nx >= WIDTH || n.ny < 0 || n.ny >= HEIGHT) continue;
+                            const nIdx = n.ny * WIDTH + n.nx;
+                            const nType = grid[nIdx];
+                            const matN = MATERIALS[nType];
+
+                            if (type === FIRE && nType === WET_SAND && Math.random() < 0.05) newGrid[nIdx] = SAND;
+
+                            if (type === FIRE && matN.flammable) {
+                                if (Math.random() < matN.burnChance) {
+                                    newGrid[nIdx] = FIRE;
+                                    if (matN.explosive) explode(n.nx, n.ny, newGrid);
+                                }
+                            }
+                            if (type === FIRE && nType === WATER && Math.random() < 0.1) newGrid[nIdx] = STEAM;
+                        }
+                        if (Math.random() > 0.88) newGrid[idx] = EMPTY;
+                    }
+
+
+
+                    // --- MOVEMENT LOGIC (Falling Only) ---
+                    // Rising logic handled in Phase 1
+
+                    // Cleanup SEED_TOP if it has no bottom
+                    if (type === SEED_TOP) {
+                        if (y === HEIGHT - 1 || (grid[(y + 1) * WIDTH + x] !== GRASS_SEED && grid[(y + 1) * WIDTH + x] !== TREE_SEED && grid[(y + 1) * WIDTH + x] !== DAISY_SEED && grid[(y + 1) * WIDTH + x] !== MASSIVE_TREE_SEED && grid[(y + 1) * WIDTH + x] !== CACTUS_SEED)) {
+                            newGrid[idx] = EMPTY;
+                        }
+                        continue; // Don't process gravity for Top, it's moved by Bottom
+                    }
+
+                    if (mat.gravity) {
+                        if (y < HEIGHT - 1) {
+                            const belowIdx = (y + 1) * WIDTH + x;
+                            const belowType = grid[belowIdx];
+                            const belowMat = MATERIALS[belowType];
+
+                            // --- GERMINATION LOGIC ---
+                            if (type === GRASS_SEED && (belowType === FERTILE_SOIL || belowType === GRASS)) {
+                                if (!moved[idx] && !moved[belowIdx]) {
+                                    nextExtra[idx]++;
+                                    if (nextExtra[idx] > 120 + Math.random() * 100) {
+                                        newGrid[idx] = GRASS;
+                                        nextExtra[idx] = 0;
+                                        // Also replace top if it exists
+                                        if (y > 0 && grid[(y - 1) * WIDTH + x] === SEED_TOP) {
+                                            newGrid[(y - 1) * WIDTH + x] = GRASS;
+                                        }
+                                    }
+                                } else {
+                                    nextExtra[idx] = 0;
+                                }
+                                continue;
+                            }
+
+                            if (type === TREE_SEED && (belowType === FERTILE_SOIL || belowType === SOIL)) {
+                                if (!moved[idx] && !moved[belowIdx]) {
+                                    // Proximity check for "single tree"
+                                    let woodNearby = false;
+                                    for (let dy = -2; dy <= 2; dy++) {
+                                        for (let dx = -2; dx <= 2; dx++) {
+                                            const nx = x + dx, ny = y + dy;
+                                            if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                                                const t = grid[ny * WIDTH + nx];
+                                                if (t === WOOD || t === GREEN_WOOD) { woodNearby = true; break; }
+                                            }
+                                        }
+                                        if (woodNearby) break;
+                                    }
+                                    if (woodNearby) {
+                                        nextExtra[idx] = 0;
+                                        continue;
+                                    }
+
+                                    nextExtra[idx]++;
+                                    if (nextExtra[idx] > 300 + Math.random() * 400) { // Slower germination (was 180+150)
+                                        newGrid[idx] = GREEN_WOOD; // Germinate as Green Wood
+                                        nextExtra[idx] = 25 + Math.floor(Math.random() * 15); // Bigger tree (was 12+10)
+                                        // Clear top if it exists to allow growth
+                                        if (y > 0 && grid[(y - 1) * WIDTH + x] === SEED_TOP) {
+                                            newGrid[(y - 1) * WIDTH + x] = EMPTY;
+                                            nextExtra[(y - 1) * WIDTH + x] = 0;
+                                        }
+                                    }
+                                } else {
+                                    nextExtra[idx] = 0;
+                                }
+                                continue;
+                            }
+
+                            if (type === DAISY_SEED && (belowType === FERTILE_SOIL || belowType === SOIL)) {
+                                if (!moved[idx] && !moved[belowIdx]) {
+                                    nextExtra[idx]++;
+                                    if (nextExtra[idx] > 250 + Math.random() * 250) { // Slower germination (was 100+100)
+                                        newGrid[idx] = DAISY_STEM;
+                                        nextExtra[idx] = 10 + Math.floor(Math.random() * 8); // Taller daisy (was 4+3)
+                                        if (y > 0 && grid[(y - 1) * WIDTH + x] === SEED_TOP) {
+                                            newGrid[(y - 1) * WIDTH + x] = EMPTY;
+                                            nextExtra[(y - 1) * WIDTH + x] = 0;
+                                        }
+                                    }
+                                } else {
+                                    nextExtra[idx] = 0;
+                                }
+                                continue;
+                            }
+
+                            if (type === MASSIVE_TREE_SEED && (belowType === FERTILE_SOIL || belowType === SOIL)) {
+                                if (!moved[idx] && !moved[belowIdx]) {
+                                    nextExtra[idx]++;
+                                    if (nextExtra[idx] > 400 + Math.random() * 400) {
+                                        newGrid[idx] = GIANT_WOOD;
+                                        nextExtra[idx] = 100 + Math.floor(Math.random() * 50); // Massive height
+                                        if (y > 0 && grid[(y - 1) * WIDTH + x] === SEED_TOP) {
+                                            newGrid[(y - 1) * WIDTH + x] = EMPTY;
+                                            nextExtra[(y - 1) * WIDTH + x] = 0;
+                                        }
+                                    }
+                                } else {
+                                    nextExtra[idx] = 0;
+                                }
+                                continue;
+                            }
+
+                            if (type === MUSHROOM_SPORE && (belowType === WOOD || belowType === GREEN_WOOD || belowType === GIANT_WOOD || belowType === FERTILE_SOIL || belowType === SOIL)) {
+                                if (!moved[idx] && !moved[belowIdx]) {
+                                    nextExtra[idx]++;
+                                    if (nextExtra[idx] > 100 + Math.random() * 100) { // Faster germination
+                                        newGrid[idx] = MUSHROOM_STEM;
+                                        nextExtra[idx] = 3 + Math.floor(Math.random() * 3); // Taller stalk (3-5px)
+                                    }
+                                } else {
+                                    nextExtra[idx] = 0;
+                                }
+                                continue;
+                            }
+
+                            if (type === BLUE_MUSHROOM_SPORE && (belowType === WOOD || belowType === GREEN_WOOD || belowType === GIANT_WOOD || belowType === FERTILE_SOIL || belowType === SOIL)) {
+                                if (!moved[idx] && !moved[belowIdx]) {
+                                    nextExtra[idx]++;
+                                    if (nextExtra[idx] > 180 + Math.random() * 180) { // Medium germination
+                                        newGrid[idx] = BLUE_MUSHROOM_STEM;
+                                        nextExtra[idx] = 8 + Math.floor(Math.random() * 5); // Smaller stalk (was 15+10)
+                                    }
+                                } else {
+                                    nextExtra[idx] = 0;
+                                }
+                                continue;
+                            }
+
+                            if (type === CACTUS_SEED && belowType === WET_SAND) {
+                                if (!moved[idx] && !moved[belowIdx]) {
+                                    nextExtra[idx]++;
+                                    if (nextExtra[idx] > 200 + Math.random() * 200) {
+                                        newGrid[idx] = CACTUS_BODY;
+                                        nextExtra[idx] = 10 + Math.floor(Math.random() * 8); // Height
+                                        if (y > 0 && grid[(y - 1) * WIDTH + x] === SEED_TOP) {
+                                            newGrid[(y - 1) * WIDTH + x] = EMPTY;
+                                            nextExtra[(y - 1) * WIDTH + x] = 0;
+                                        }
+                                    }
+                                } else {
+                                    nextExtra[idx] = 0;
+                                }
+                                continue;
+                            }
+
+                            // Acid Displacement (Gases)
+                            if (type === ACID && belowMat?.isGas) {
+                                swap(x, y, x, y + 1, newGrid, nextExtra, moved);
+                                continue;
+                            }
+
+                            if (type === GRASS_SEED || type === TREE_SEED || type === DAISY_SEED || type === MASSIVE_TREE_SEED || type === CACTUS_SEED) {
+                                // Check if we have a top part
+                                const hasTop = (y > 0 && grid[(y - 1) * WIDTH + x] === SEED_TOP);
+
+                                // Can we move down?
+                                let canMoveDown = (belowType === EMPTY || (belowMat?.liquid && mat.density > belowMat.density));
+                                if (!canMoveDown && mat.density > (belowMat?.density || 0)) {
+                                    if (belowType === SAND || belowType === SOIL) canMoveDown = true;
+                                }
+
+                                if (canMoveDown) {
+                                    // If we have a top, check if it can follow us
+                                    if (hasTop) {
+                                        // Move Bottom to below
+                                        newGrid[belowIdx] = type;
+                                        nextExtra[belowIdx] = 0;
+                                        moved[belowIdx] = 1;
+
+                                        // Move Top to current
+                                        newGrid[idx] = SEED_TOP;
+                                        nextExtra[idx] = 0;
+                                        moved[idx] = 1;
+
+                                        // Clear Top's old position
+                                        newGrid[(y - 1) * WIDTH + x] = EMPTY;
+                                    } else {
+                                        swap(x, y, x, y + 1, newGrid, nextExtra, moved);
+                                    }
+                                    nextExtra[idx] = 0;
+                                    continue;
+                                }
+                            }
+
+                            if (type === TREE_SEED) {
+                                // Check if we have a top part
+                                const hasTop = (y > 0 && grid[(y - 1) * WIDTH + x] === SEED_TOP);
+
+                                // Can we move down?
+                                let canMoveDown = (belowType === EMPTY || (belowMat?.liquid && mat.density > belowMat.density));
+                                if (!canMoveDown && mat.density > (belowMat?.density || 0)) {
+                                    if (belowType === SAND || belowType === SOIL) canMoveDown = true;
+                                }
+
+                                if (canMoveDown) {
+                                    // If we have a top, check if it can follow us
+                                    if (hasTop) {
+                                        // Move Bottom to below
+                                        newGrid[belowIdx] = TREE_SEED;
+                                        nextExtra[belowIdx] = 0;
+                                        moved[belowIdx] = 1;
+
+                                        // Move Top to current
+                                        newGrid[idx] = SEED_TOP;
+                                        nextExtra[idx] = 0;
+                                        moved[idx] = 1;
+
+                                        // Clear Top's old position
+                                        newGrid[(y - 1) * WIDTH + x] = EMPTY;
+                                    } else {
+                                        swap(x, y, x, y + 1, newGrid, nextExtra, moved);
+                                    }
+                                    nextExtra[idx] = 0;
+                                    continue;
+                                }
+                            }
+
+                            let canSinkThrough = (belowType === EMPTY || (belowMat?.liquid && mat.density > belowMat.density));
+
+
+                            if (!canSinkThrough && mat.density > (belowMat?.density || 0)) {
+                                if (belowType === SAND || belowType === SOIL) canSinkThrough = true;
+                            }
+
+                            if (canSinkThrough) {
+                                swap(x, y, x, y + 1, newGrid, nextExtra, moved);
+                                if (type === GRASS_SEED) nextExtra[idx] = 0;
+                            } else if (mat.liquid) {
+                                // LIQUID FLOW PHYSICS
+                                let movedLiquid = false;
+                                const side = Math.random() > 0.5 ? 1 : -1;
+
+                                if (x + side >= 0 && x + side < WIDTH) {
+                                    const dIdx = (y + 1) * WIDTH + (x + side);
+                                    const dType = grid[dIdx];
+                                    const dMat = MATERIALS[dType];
+                                    if (dType === EMPTY || (dMat?.liquid && mat.density > dMat.density) || (type === ACID && dMat?.isGas)) {
+                                        swap(x, y, x + side, y + 1, newGrid, nextExtra, moved);
+                                        movedLiquid = true;
+                                    }
+                                }
+
+                                if (!movedLiquid) {
+                                    const flowWidth = mat.flowRate || 1;
+                                    for (let f = 1; f <= flowWidth; f++) {
+                                        const nx = x + (side * f);
+                                        if (nx < 0 || nx >= WIDTH) break;
+
+                                        const currentPosType = newGrid[y * WIDTH + nx];
+                                        const currentPosMat = MATERIALS[currentPosType];
+
+                                        if (currentPosType === EMPTY || (currentPosMat?.liquid && mat.density > currentPosMat.density) || (type === ACID && currentPosMat?.isGas)) {
+                                            const underNxIdx = (y + 1) * WIDTH + nx;
+                                            const underNxType = grid[underNxIdx];
+                                            const underNxMat = MATERIALS[underNxType];
+
+                                            if (underNxType === EMPTY || (underNxMat?.liquid && mat.density > underNxMat.density)) {
+                                                swap(x, y, nx, y, newGrid, nextExtra, moved);
+                                                movedLiquid = true;
+                                                break;
+                                            }
+
+                                            if (f === flowWidth) {
+                                                swap(x, y, nx, y, newGrid, nextExtra, moved);
+                                                movedLiquid = true;
+                                            }
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                }
+                            } else {
+                                // GRANULAR SLIPPING
+                                const side = Math.random() > 0.5 ? 1 : -1;
+                                if (x + side >= 0 && x + side < WIDTH) {
+                                    const dIdx = (y + 1) * WIDTH + (x + side);
+                                    const dType = grid[dIdx];
+
+                                    if (dType === EMPTY || (MATERIALS[dType]?.liquid && mat.density > MATERIALS[dType].density)) {
+                                        if (!mat.viscous || Math.random() < 0.2) {
+                                            swap(x, y, x + side, y + 1, newGrid, nextExtra, moved);
+                                            // Reset seed timer if it slips
+                                            if (type === GRASS_SEED) nextExtra[idx] = 0;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            grid = newGrid;
+            extraState = nextExtra;
+        }
+
+        function swap(x1, y1, x2, y2, g, ex, m) {
+            const i1 = y1 * WIDTH + x1, i2 = y2 * WIDTH + x2;
+            const t = g[i1]; g[i1] = g[i2]; g[i2] = t;
+            const te = ex[i1]; ex[i1] = ex[i2]; ex[i2] = te;
+            // Mark both as moved to prevent multiple updates per frame and check stability
+            m[i1] = 1;
+            m[i2] = 1;
+        }
+
+        function render() {
+            const imgData = ctx.createImageData(WIDTH, HEIGHT);
+            const data = imgData.data;
+            let count = 0;
+            elementCounts.fill(0); // Reset element counts for quests
+
+            for (let i = 0; i < grid.length; i++) {
+                const type = grid[i];
+                const mat = MATERIALS[type];
+
+                elementCounts[type]++; // Track element count
+
+                const r = i * 4;
+                data[r] = mat.color[0];
+                data[r + 1] = mat.color[1];
+                data[r + 2] = mat.color[2];
+                data[r + 3] = 255;
+                if (type !== EMPTY) {
+                    count++;
+                    const v = (Math.random() * 6) - 3;
+                    data[r] = Math.max(0, Math.min(255, data[r] + v));
+                    data[r + 1] = Math.max(0, Math.min(255, data[r + 1] + v));
+                    data[r + 2] = Math.max(0, Math.min(255, data[r + 2] + v));
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            totalParticlesCount = count; // Save total for quests
+            particleCounter.innerText = `Particles: ${count}`;
+
+            // Check quests periodically (every 15 frames)
+            questFrameCount++;
+            if (questFrameCount % 15 === 0) {
+                checkQuests();
+            }
+
+            // --- DRAW SELECTION OVERLAY ---
+            if (selection.active) {
+                const x = Math.min(selection.x, selection.x + selection.w) + 0.5;
+                const y = Math.min(selection.y, selection.y + selection.h) + 0.5;
+                const w = Math.abs(selection.w);
+                const h = Math.abs(selection.h);
+
+                ctx.strokeStyle = '#60a5fa';
+                ctx.setLineDash([2, 2]);
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, w, h);
+                ctx.setLineDash([]);
+
+                // If moving, draw the buffer content
+                if (selection.dragging && selectionBuffer) {
+                    const bx = selection.x;
+                    const by = selection.y;
+                    const bw = Math.abs(selection.w);
+                    const bh = Math.abs(selection.h);
+
+                    const dragData = ctx.createImageData(bw, bh);
+                    for (let i = 0; i < selectionBuffer.length; i++) {
+                        const type = selectionBuffer[i];
+                        const mat = MATERIALS[type];
+                        const r = i * 4;
+                        if (type !== EMPTY) {
+                            dragData.data[r] = mat.color[0];
+                            dragData.data[r + 1] = mat.color[1];
+                            dragData.data[r + 2] = mat.color[2];
+                            dragData.data[r + 3] = 200; // Semi-transparent
+                        } else {
+                            dragData.data[r + 3] = 0;
+                        }
+                    }
+                    ctx.putImageData(dragData, bx, by);
+                }
+            }
+        }
+
+        let lastTime = 0;
+        function loop(t) {
+            const dt = t - lastTime;
+            if (!isPaused && dt > 0) fpsCounter.innerText = `FPS: ${Math.round(1000 / dt)}`;
+            lastTime = t;
+            update();
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        elementBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                elementBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const t = btn.dataset.type;
+                currentElementDisplay.innerText = `Selected: ${t.replace('_', ' ')}`;
+
+                const typeMap = {
+                    'eraser': -1, 'sand': SAND, 'wet_sand': WET_SAND, 'soil': SOIL, 'fertile_soil': FERTILE_SOIL,
+                    'grass_seed': GRASS_SEED, 'tree_seed': TREE_SEED, 'daisy_seed': DAISY_SEED, 'massive_tree_seed': MASSIVE_TREE_SEED, 'mushroom_spore': MUSHROOM_SPORE, 'blue_mushroom_spore': BLUE_MUSHROOM_SPORE, 'cactus_seed': CACTUS_SEED, 'water': WATER, 'stone': STONE, 'wood': WOOD,
+                    'fire': FIRE, 'smoke': STEAM, 'gunpowder': GUNPOWDER, 'titanium': TITANIUM,
+                    'cloud': CLOUD, 'oil': OIL, 'acid': ACID, 'antiacid': ANTIACID
+                };
+                selectedType = typeMap[t];
+                currentTool = 'brush';
+                selection.active = false;
+                selectionActions.classList.add('hidden');
+                updateBrushCursorSize();
+            });
+            btn.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const type = btn.dataset.type;
+                if (type === 'antiacid') antiAcidGui.style.display = 'flex';
+                else if (type === 'acid') acidGui.style.display = 'flex';
+                else if (type === 'cloud') cloudGui.style.display = 'flex';
+                else if (type === 'grass_seed') grassSeedGui.style.display = 'flex';
+                else if (type === 'tree_seed') treeSeedGui.style.display = 'flex';
+                else if (type === 'daisy_seed') daisySeedGui.style.display = 'flex';
+                else if (type === 'massive_tree_seed') massiveTreeGui.style.display = 'flex';
+                else if (type === 'mushroom_spore') mushroomGui.style.display = 'flex';
+                else if (type === 'blue_mushroom_spore') blueMushroomGui.style.display = 'flex';
+                else if (type === 'cactus_seed') cactusGui.style.display = 'flex';
+            });
+        });
+
+        document.querySelectorAll('.rain-choice').forEach(choice => {
+            choice.addEventListener('click', () => {
+                document.querySelectorAll('.rain-choice').forEach(c => c.classList.remove('selected'));
+                choice.classList.add('selected');
+                cloudRainType = parseInt(choice.dataset.liquid);
+            });
+        });
+
+        // Pickup Tool Button
+        const pickupToolBtn = document.getElementById('pickupToolBtn');
+        if (pickupToolBtn) {
+            pickupToolBtn.addEventListener('click', () => {
+                currentTool = 'pickup';
+                elementBtns.forEach(b => b.classList.remove('active'));
+                selectToolBtn.classList.remove('active');
+                pickupToolBtn.classList.add('active');
+                selectedType = -1;
+                brushCursor.style.display = 'none';
+                selectionActions.classList.remove('hidden');
+            });
+        }
+
+        document.querySelectorAll('.close-gui, .gui-done').forEach(el => {
+            el.addEventListener('click', () => {
+                antiAcidGui.style.display = 'none';
+                acidGui.style.display = 'none';
+                cloudGui.style.display = 'none';
+                grassSeedGui.style.display = 'none';
+                treeSeedGui.style.display = 'none';
+                daisySeedGui.style.display = 'none';
+                massiveTreeGui.style.display = 'none';
+                mushroomGui.style.display = 'none';
+                blueMushroomGui.style.display = 'none';
+                cactusGui.style.display = 'none';
+            });
+        });
+
+        // Spikes toggle logic
+        if (toggleCactusSpikes) {
+            toggleCactusSpikes.addEventListener('click', () => {
+                cactusSpikesEnabled = !cactusSpikesEnabled;
+                toggleCactusSpikes.classList.toggle('bg-green-600', cactusSpikesEnabled);
+                toggleCactusSpikes.classList.toggle('bg-gray-600', !cactusSpikesEnabled);
+                toggleCactusSpikes.querySelector('.dot').style.transform = cactusSpikesEnabled ? 'translateX(24px)' : 'translateX(0)';
+            });
+        }
+
+        antiAcidTrackingToggle.addEventListener('change', (e) => antiAcidAutoTrack = e.target.checked);
+        acidTrackingToggle.addEventListener('change', (e) => acidAutoTrack = e.target.checked);
+        antiAcidPerishToggle.addEventListener('change', (e) => antiAcidPerish = e.target.checked);
+        acidPerishToggle.addEventListener('change', (e) => acidPerish = e.target.checked);
+
+        cloudRainToggle.addEventListener('change', (e) => cloudRainEnabled = e.target.checked);
+        document.getElementById('cloudGoesAwayToggle').addEventListener('change', (e) => cloudGoesAway = e.target.checked);
+
+        brushSizeInput.addEventListener('input', (e) => {
+            brushValDisplay.innerText = e.target.value;
+            updateBrushCursorSize();
+        });
+
+        // Tab Switching Logic
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active class from all
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+
+                // Add active class to clicked
+                btn.classList.add('active');
+                const tabId = 'tab-' + btn.dataset.tab;
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // --- SELECTION TOOL FUNCTIONS ---
+        function findConnectedStructure(startX, startY) {
+            const startType = grid[startY * WIDTH + startX];
+            const family = STRUCTURE_FAMILIES[startType] || [startType];
+            const visited = new Set();
+            const queue = [[startX, startY]];
+            const pixels = [];
+            let minX = startX, maxX = startX, minY = startY, maxY = startY;
+
+            visited.add(startY * WIDTH + startX);
+
+            while (queue.length > 0) {
+                const [x, y] = queue.shift();
+                pixels.push({ x, y });
+
+                minX = Math.min(minX, x);
+                maxX = Math.max(maxX, x);
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+
+                const neighbors = [
+                    [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1],
+                    [x + 1, y + 1], [x - 1, y - 1], [x + 1, y - 1], [x - 1, y + 1]
+                ];
+
+                for (const [nx, ny] of neighbors) {
+                    if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+                        const nIdx = ny * WIDTH + nx;
+                        const nType = grid[nIdx];
+                        if (!visited.has(nIdx) && family.includes(nType)) {
+                            visited.add(nIdx);
+                            queue.push([nx, ny]);
+                        }
+                    }
+                }
+            }
+
+            return { pixels, minX, maxX, minY, maxY };
+        }
+
+        function cutSelection() {
+            if (!selection.active || selection.w === 0 || selection.h === 0) return;
+
+            const x = Math.min(selection.x, selection.x + selection.w);
+            const y = Math.min(selection.y, selection.y + selection.h);
+            const w = Math.abs(selection.w);
+            const h = Math.abs(selection.h);
+
+            selectionBuffer = new Int32Array(w * h);
+            selectionExtraBuffer = new Int16Array(w * h);
+
+            for (let dy = 0; dy < h; dy++) {
+                for (let dx = 0; dx < w; dx++) {
+                    const gx = x + dx;
+                    const gy = y + dy;
+                    if (gx >= 0 && gx < WIDTH && gy >= 0 && gy < HEIGHT) {
+                        const idx = gy * WIDTH + gx;
+                        const bIdx = dy * w + dx;
+                        selectionBuffer[bIdx] = grid[idx];
+                        selectionExtraBuffer[bIdx] = extraState[idx];
+                        grid[idx] = EMPTY;
+                        extraState[idx] = 0;
+                    }
+                }
+            }
+        }
+
+        function pasteSelection() {
+            if (!selectionBuffer) return;
+
+            const x = selection.x;
+            const y = selection.y;
+            const w = Math.abs(selection.w);
+            const h = Math.abs(selection.h);
+
+            for (let dy = 0; dy < h; dy++) {
+                for (let dx = 0; dx < w; dx++) {
+                    const gx = x + dx;
+                    const gy = y + dy;
+                    if (gx >= 0 && gx < WIDTH && gy >= 0 && gy < HEIGHT) {
+                        const idx = gy * WIDTH + gx;
+                        const bIdx = dy * w + dx;
+                        const type = selectionBuffer[bIdx];
+                        if (type !== EMPTY) {
+                            grid[idx] = type;
+                            extraState[idx] = selectionExtraBuffer[bIdx];
+                        }
+                    }
+                }
+            }
+            selectionBuffer = null;
+            selectionExtraBuffer = null;
+            selection.dragging = false;
+        }
+
+        function deleteSelection() {
+            if (!selection.active) return;
+            const x = Math.min(selection.x, selection.x + selection.w);
+            const y = Math.min(selection.y, selection.y + selection.h);
+            const w = Math.abs(selection.w);
+            const h = Math.abs(selection.h);
+
+            for (let dy = 0; dy < h; dy++) {
+                for (let dx = 0; dx < w; dx++) {
+                    const gx = x + dx;
+                    const gy = y + dy;
+                    if (gx >= 0 && gx < WIDTH && gy >= 0 && gy < HEIGHT) {
+                        grid[gy * WIDTH + gx] = EMPTY;
+                        extraState[gy * WIDTH + gx] = 0;
+                    }
+                }
+            }
+            selection.active = false;
+        }
+
+        function replaceSelection() {
+            if (!selection.active || selectedType === -1) return;
+            const x = Math.min(selection.x, selection.x + selection.w);
+            const y = Math.min(selection.y, selection.y + selection.h);
+            const w = Math.abs(selection.w);
+            const h = Math.abs(selection.h);
+
+            for (let dy = 0; dy < h; dy++) {
+                for (let dx = 0; dx < w; dx++) {
+                    const gx = x + dx;
+                    const gy = y + dy;
+                    if (gx >= 0 && gx < WIDTH && gy >= 0 && gy < HEIGHT) {
+                        const idx = gy * WIDTH + gx;
+                        if (grid[idx] !== EMPTY) {
+                            grid[idx] = selectedType;
+                            extraState[idx] = 0;
+                        }
+                    }
+                }
+            }
+            selection.active = false;
+        }
+
+        // Eraser Button (Redundant listener removed, handled by .element-btn listener)
+
+        // Select Tool Button
+        if (selectToolBtn) {
+            selectToolBtn.addEventListener('click', () => {
+                currentTool = 'select';
+                document.querySelectorAll('.element-btn').forEach(b => b.classList.remove('active'));
+                selectToolBtn.classList.add('active');
+                selectedType = -1;
+                brushCursor.style.display = 'none';
+                selectionActions.classList.remove('hidden');
+            });
+        }
+
+        // Delete Selection Button
+        if (deleteSelectionBtn) {
+            deleteSelectionBtn.addEventListener('click', deleteSelection);
+        }
+
+        // Replace Selection Button
+        const replaceSelectionBtn = document.getElementById('replaceSelectionBtn');
+        if (replaceSelectionBtn) {
+            replaceSelectionBtn.addEventListener('click', replaceSelection);
+        }
+
+        // Grass Seed GUI context menu
+        const gsBtn = document.getElementById('grassSeedBtn');
+        if (gsBtn) {
+            gsBtn.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                grassSeedGui.style.display = 'flex';
+            });
+        }
+
+        clearBtn.addEventListener('click', () => {
+            grid.fill(EMPTY);
+            extraState.fill(0);
+        });
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseIcon.innerText = isPaused ? '▶' : '⏸';
+            pauseLabel.innerText = isPaused ? 'START TIME' : 'STOP TIME';
+            pauseOverlay.classList.toggle('hidden', !isPaused);
+        });
+
+        canvas.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', () => {
+            const wasDragging = selection.dragging;
+            isMouseDown = false;
+            selection.dragging = false; // logic handled in loop? no.
+
+            if (currentTool === 'move' && wasDragging) {
+                pasteSelection();
+                if (pickupToolBtn.classList.contains('active')) {
+                    currentTool = 'pickup';
+                } else {
+                    currentTool = 'select';
+                }
+            }
+        });
+        window.addEventListener('touchcancel', () => isMouseDown = false);
+
+        init();
+    </script>
+</body>
+
+</html>
