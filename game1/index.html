@@ -1,21 +1,37 @@
-/* --- UPDATED TABS & SCROLLING CSS --- */
+/* --- UPDATED SCROLLING & TABS CSS --- */
+body {
+    margin: 0;
+    padding: 0;
+    overflow-y: auto !important; /* Forces the page to allow scrolling */
+    background-color: #1a1a1a;
+    color: #eee;
+    font-family: system-ui, -apple-system, sans-serif;
+    touch-action: auto !important; /* Enables swiping on mobile */
+}
+
+/* We keep the game canvas locked so you can still draw */
+#canvasContainer, canvas {
+    touch-action: none;
+}
+
 .tab-nav {
     display: flex;
     gap: 10px;
     margin-bottom: 10px;
     border-bottom: 2px solid #374151;
     padding-bottom: 5px;
-    overflow-x: auto;       /* Allows horizontal scrolling for tabs */
-    white-space: nowrap;    /* Prevents tabs from wrapping to a new line */
-    scrollbar-width: none;  /* Hides scrollbar on Firefox for a cleaner look */
+    overflow-x: auto;       /* Enables horizontal swipe for your tabs */
+    white-space: nowrap;    /* Keeps all tabs in one row */
+    scrollbar-width: none;  
+    -webkit-overflow-scrolling: touch;
 }
 
-/* Hides scrollbar on Chrome/Safari for the tab navigation */
 .tab-nav::-webkit-scrollbar {
-    display: none;
+    display: none;          /* Hides the scrollbar on the tab bar */
 }
 
 .tab-btn {
+    flex-shrink: 0;         /* Stops tabs from squishing */
     background: none;
     border: none;
     color: #9ca3af;
@@ -24,47 +40,24 @@
     font-size: 0.75rem;
     cursor: pointer;
     padding: 5px 10px;
-    border-radius: 4px 4px 0 0;
-    transition: all 0.2s;
-    flex-shrink: 0;         /* Prevents buttons from squishing when many tabs exist */
 }
 
-.tab-btn:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.tab-btn.active {
-    color: #60a5fa;
-    border-bottom: 2px solid #60a5fa;
-    margin-bottom: -7px;
-    background: rgba(96, 165, 250, 0.1);
-}
-
-/* Unified Scrollable Container for all Tab Contents (Elements, Life, Tools) */
 .tab-content {
     display: none;
-    max-height: 40vh;       /* Limits height to 40% of screen to force scrolling */
-    overflow-y: auto;       /* Enables vertical scrolling */
+    max-height: 35vh;       /* Limits elements height to 35% of the screen */
+    overflow-y: auto;       /* Enables vertical scrolling for elements */
     padding-right: 8px;
-    scrollbar-width: thin;
-    scrollbar-color: #4b5563 #1f2937;
+    touch-action: pan-y;    /* Specifically allows finger scrolling here */
 }
 
 .tab-content.active {
     display: block;
 }
 
-/* Custom Scrollbar Styling for Tab Content */
+/* Custom Scrollbar for your Elements */
 .tab-content::-webkit-scrollbar {
     width: 6px;
 }
-
-.tab-content::-webkit-scrollbar-track {
-    background: #1f2937;
-    border-radius: 10px;
-}
-
 .tab-content::-webkit-scrollbar-thumb {
     background: #4b5563;
     border-radius: 10px;
