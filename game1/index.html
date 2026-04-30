@@ -1,64 +1,144 @@
-/* --- UPDATED SCROLLING & TABS CSS --- */
-body {
-    margin: 0;
-    padding: 0;
-    overflow-y: auto !important; /* Forces the page to allow scrolling */
-    background-color: #1a1a1a;
-    color: #eee;
-    font-family: system-ui, -apple-system, sans-serif;
-    touch-action: auto !important; /* Enables swiping on mobile */
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Physics Sandbox</title>
+    <style>
+        /* --- CORE STYLES --- */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111827;
+            color: #f3f4f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-y: auto !important; /* ENABLED SCROLLING */
+            touch-action: auto !important; /* ENABLED TOUCH */
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
 
-/* We keep the game canvas locked so you can still draw */
-#canvasContainer, canvas {
-    touch-action: none;
-}
+        #canvasContainer {
+            flex-grow: 1;
+            position: relative;
+            background: #000;
+            cursor: crosshair;
+            touch-action: none; /* Keep drawing smooth */
+        }
 
-.tab-nav {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-    border-bottom: 2px solid #374151;
-    padding-bottom: 5px;
-    overflow-x: auto;       /* Enables horizontal swipe for your tabs */
-    white-space: nowrap;    /* Keeps all tabs in one row */
-    scrollbar-width: none;  
-    -webkit-overflow-scrolling: touch;
-}
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
 
-.tab-nav::-webkit-scrollbar {
-    display: none;          /* Hides the scrollbar on the tab bar */
-}
+        /* --- SIDEBAR & TABS --- */
+        .controls {
+            background-color: #1f2937;
+            padding: 15px;
+            border-top: 2px solid #374151;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
 
-.tab-btn {
-    flex-shrink: 0;         /* Stops tabs from squishing */
-    background: none;
-    border: none;
-    color: #9ca3af;
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    cursor: pointer;
-    padding: 5px 10px;
-}
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #374151;
+        }
 
-.tab-content {
-    display: none;
-    max-height: 35vh;       /* Limits elements height to 35% of the screen */
-    overflow-y: auto;       /* Enables vertical scrolling for elements */
-    padding-right: 8px;
-    touch-action: pan-y;    /* Specifically allows finger scrolling here */
-}
+        .tab-nav::-webkit-scrollbar { display: none; }
 
-.tab-content.active {
-    display: block;
-}
+        .tab-btn {
+            background: #374151;
+            color: #9ca3af;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
 
-/* Custom Scrollbar for your Elements */
-.tab-content::-webkit-scrollbar {
-    width: 6px;
-}
-.tab-content::-webkit-scrollbar-thumb {
-    background: #4b5563;
-    border-radius: 10px;
-}
+        .tab-btn.active {
+            background: #60a5fa;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            max-height: 300px;
+            overflow-y: auto; /* ENABLED VERTICAL SCROLL */
+        }
+
+        .tab-content.active { display: block; }
+
+        .elements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px;
+            padding: 10px 0;
+        }
+
+        .element-btn {
+            background: #374151;
+            border: 2px solid transparent;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .element-btn:hover { background: #4b5563; }
+        .element-btn.active { border-color: #60a5fa; background: #1e3a8a; }
+
+        /* --- BOTTOM CONTROLS --- */
+        .bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #374151;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvasContainer">
+        <canvas id="sandboxCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="showTab('elements')">Elements</button>
+            <button class="tab-btn" onclick="showTab('life')">Life</button>
+            <button class="tab-btn" onclick="showTab('tools')">Tools</button>
+            <button class="tab-btn" onclick="showTab('settings')">Settings</button>
+        </div>
+
+        <div id="elements" class="tab-content active">
+            <div class="elements-grid" id="elementsGrid">
+                <!-- Elements generated by JS -->
+            </div>
+        </div>
+
+        <div id="life" class="tab-content">
+            <div class="elements-grid" id="lifeGrid">
+                <!-- Life elements generated by JS -->
+            </div>
+        </div>
+
+        <div id="tools" class="tab-content">
+            <div class="elements-grid">
+                <button class="element-btn" onclick="clearCanvas()">Clear All</button>
+                <button class="element-btn" onclick="togglePause()">Pause/Play</button>
+            </div>
+        </div>
+
+        <
